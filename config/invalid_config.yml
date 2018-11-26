@@ -1,0 +1,35 @@
+default: &default
+  adapter: sqlite3
+  
+tables:
+  exists_shard_column_but_not_sequencer:
+    shard: true
+    shard_column: id
+    shards:
+      - user_shard_1:
+          <<: *default
+          database: /tmp/user_shard_1.bin
+      - user_shard_2:
+          <<: *default
+          database: /tmp/user_shard_2.bin
+  not_shard_column_but_exists_sequencer:
+    shard: true
+    sequencer:
+      <<: *default
+      database: /tmp/user_seq.bin
+    shards:
+      - user_shard_1:
+          <<: *default
+          database: /tmp/user_shard_1.bin
+      - user_shard_2:
+          <<: *default
+          database: /tmp/user_shard_2.bin
+  not_shard_key:
+    shard: true
+    shards:
+      - user_shard_1:
+          <<: *default
+          database: /tmp/user_shard_1.bin
+      - user_shard_2:
+          <<: *default
+          database: /tmp/user_shard_2.bin

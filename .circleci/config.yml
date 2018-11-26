@@ -1,0 +1,26 @@
+version: 2
+jobs:
+  test:
+    working_directory: /go/src/go.knocknote.io/octillery
+    docker:
+    - image: golang:1.11
+    steps:
+      - checkout
+      - run:
+          name: Run go get
+          command: |
+            go get ./...
+      - run:
+          name: Install SQLite plugin
+          command: |
+            octillery install --sqlite
+      - run:
+          name: Run unit tests and measure coverage
+          command: |
+            go test -v -coverprofile=coverage.out ./...
+            bash <(curl -s https://codecov.io/bash) -P ${CIRCLE_PULL_REQUEST##*/}
+workflows:
+  version: 2
+  test:
+    jobs:
+      - test

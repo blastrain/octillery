@@ -1,0 +1,21 @@
+default: &default
+  database: /tmp/post_db.bin
+  adapter: sqlite3
+
+tables:
+  posts:
+    shard: true
+    shard_column: post_id
+    sequencer:
+      <<: *default
+      database: /tmp/post_seq.bin
+    shards:
+      - post_shard_1:
+          <<: *default
+          database: /tmp/post_shard_1
+      - post_shard_2:
+          <<: *default
+          database: /tmp/post_shard_2
+  tests:
+    <<: *default
+    database: /tmp/test_db.bin

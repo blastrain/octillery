@@ -1,0 +1,64 @@
+default: &default
+  adapter: sqlite3
+  
+tables:
+  users:
+    shard: true
+    shard_column: id
+    sequencer:
+      <<: *default
+      database: /tmp/user_seq.bin
+    shards:
+      - user_shard_1:
+          <<: *default
+          database: /tmp/user_shard_1.bin
+      - user_shard_2:
+          <<: *default
+          database: /tmp/user_shard_2.bin
+  user_items:
+    shard: true
+    shard_key: user_id
+    algorithm: hashmap
+    shards:
+      - user_item_shard_1:
+          <<: *default
+          database: /tmp/user_item_shard_1.bin
+      - user_item_shard_2:
+          <<: *default
+          database: /tmp/user_item_shard_2.bin
+      - user_item_shard_3:
+          <<: *default
+          database: /tmp/user_item_shard_3.bin
+      - user_item_shard_4:
+          <<: *default
+          database: /tmp/user_item_shard_4.bin
+      - user_item_shard_5:
+          <<: *default
+          database: /tmp/user_item_shard_5.bin
+      - user_item_shard_6:
+          <<: *default
+          database: /tmp/user_item_shard_6.bin
+      - user_item_shard_7:
+          <<: *default
+          database: /tmp/user_item_shard_7.bin
+      - user_item_shard_8:
+          <<: *default
+          database: /tmp/user_item_shard_8.bin
+  user_decks:
+    shard: true
+    shard_column: id
+    shard_key: user_id
+    sequencer:
+      <<: *default
+      database: /tmp/user_deck_seq.bin
+    shards:
+      - user_deck_shard_1:
+          <<: *default
+          database: /tmp/user_deck_shard_1.bin
+      - user_deck_shard_2:
+          <<: *default
+          database: /tmp/user_deck_shard_2.bin
+  user_stages:
+    <<: *default
+    database: /tmp/user_stage.bin
+    

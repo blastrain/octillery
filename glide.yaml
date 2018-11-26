@@ -1,0 +1,15 @@
+package: octillery
+import:
+- package: github.com/fatih/color
+- package: github.com/jessevdk/go-flags
+- package: github.com/sergi/go-diff
+- package: github.com/knocknote/vitess-sqlparser
+  version: 1003c43917a3ddbe167e102b99020cefacdd7e0c
+- package: github.com/pkg/errors
+- package: gopkg.in/yaml.v2
+- package: github.com/mattn/go-sqlite3
+- package: github.com/go-sql-driver/mysql
+- package: github.com/schemalex/schemalex
+testImport:
+- package: gopkg.in/gorp.v1
+- package: github.com/gocraft/dbr

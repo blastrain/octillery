@@ -1,0 +1,8 @@
+default: &default
+  adapter: test
+
+tables:
+  user_errors:
+    <<: *default
+    database: /tmp/user_error.bin
+
