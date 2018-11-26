@@ -13,6 +13,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"strconv"
 	"strings"
 	"time"
@@ -34,12 +35,16 @@ import (
 )
 
 type Option struct {
+	Version   VersionCommand   `description:"print the version of octillery" command:"version"`
 	Transpose TransposeCommand `description:"replace 'database/sql' to 'go.knocknote.io/octillery/database/sql'" command:"transpose"`
 	Migrate   MigrateCommand   `description:"migrate database schema ( powered by schemalex )" command:"migrate"`
 	Import    ImportCommand    `description:"import seeds" command:"import"`
 	Console   ConsoleCommand   `description:"database console" command:"console"`
 	Install   InstallCommand   `description:"install database adapter" command:"install"`
 	Shard     ShardCommand     `description:"get sharded database information by sharding key" command:"shard"`
+}
+
+type VersionCommand struct {
 }
 
 type TransposeCommand struct {
@@ -71,6 +76,17 @@ type ShardCommand struct {
 }
 
 var opts Option
+
+func (cmd *VersionCommand) Execute(args []string) error {
+	fmt.Printf(
+		"octillery version %s, built with go %s for %s/%s\n",
+		octillery.Version,
+		runtime.Version(),
+		runtime.GOOS,
+		runtime.GOARCH,
+	)
+	return nil
+}
 
 func (cmd *TransposeCommand) Execute(args []string) error {
 	searchPath := "."
