@@ -319,9 +319,9 @@ $ make test
 - `sqlparser` : https://github.com/knocknote/vitess-sqlparser
 - `schemalex` : https://github.com/schemalex/schemalex
 
-# Author
+# Committers
 
-Masaaki Goshima (@goccy)
+Masaaki Goshima ([@goccy](https://github.com/goccy))
 
 # LICENSE
 
