@@ -18,6 +18,8 @@ import (
 	"go.knocknote.io/octillery/sqlparser"
 )
 
+const Version = "v1.0.0"
+
 // LoadConfig load your database configuration file.
 //
 // If use with debug mode, set environment variable  ( `OCTILLERY_DEBUG=1` ) before call this method.
