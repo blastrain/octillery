@@ -255,6 +255,7 @@ func TestEqualDSN(t *testing.T) {
 		checkErr(t, err)
 		defer mgr.Close()
 		anotherConn, err := mgr.ConnectionByTableName("users")
+		checkErr(t, err)
 		if !conn.EqualDSN(anotherConn) {
 			t.Fatal("cannot work equal dsn")
 		}
