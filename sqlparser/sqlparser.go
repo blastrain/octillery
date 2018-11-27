@@ -196,7 +196,7 @@ func (p *Parser) replaceInsertValueFromValArg(query *InsertQuery, colIndex int, 
 				Val:  []byte(arg),
 			}
 		}
-	case int, int8, int32, int64:
+	case int, int8, int16, int32, int64:
 		if colName == p.shardKeyColumnName(query.TableName) {
 			query.ShardKeyID = Identifier(arg.(int64))
 		}
@@ -206,7 +206,7 @@ func (p *Parser) replaceInsertValueFromValArg(query *InsertQuery, colIndex int, 
 				Val:  []byte(fmt.Sprintf("%d", arg)),
 			}
 		}
-	case uint, uint8, uint32, uint64:
+	case uint, uint8, uint16, uint32, uint64:
 		if colName == p.shardKeyColumnName(query.TableName) {
 			query.ShardKeyID = Identifier(int64(arg.(uint64)))
 		}
