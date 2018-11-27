@@ -124,7 +124,7 @@ func (r *rowsProxy) Next(dest []coredriver.Value) error {
 		newDest[idx] = driver.Value(v)
 	}
 	err := r.rows.Next(newDest)
-	for idx, _ := range dest {
+	for idx := range dest {
 		dest[idx] = newDest[idx]
 	}
 	return err
