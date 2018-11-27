@@ -9,14 +9,17 @@ import (
 	"go.knocknote.io/octillery/sqlparser"
 )
 
+// SelectQueryExecutor inherits QueryExecutorBase structure
 type SelectQueryExecutor struct {
 	*QueryExecutorBase
 }
 
+// NewSelectQueryExecutor creates instance of SelectQueryExecutor
 func NewSelectQueryExecutor(base *QueryExecutorBase) *SelectQueryExecutor {
 	return &SelectQueryExecutor{base}
 }
 
+// Query select multiple rows for shards.
 func (e *SelectQueryExecutor) Query() ([]*sql.Rows, error) {
 	query, ok := e.query.(*sqlparser.QueryBase)
 	if !ok {
@@ -60,6 +63,7 @@ func (e *SelectQueryExecutor) Query() ([]*sql.Rows, error) {
 	return allRows, nil
 }
 
+// QueryRow select row from single shard.
 func (e *SelectQueryExecutor) QueryRow() (*sql.Row, error) {
 	query, ok := e.query.(*sqlparser.QueryBase)
 	if !ok {
@@ -87,6 +91,7 @@ func (e *SelectQueryExecutor) QueryRow() (*sql.Row, error) {
 	return row, nil
 }
 
+// Exec doesn't support in SelectQueryExecutor, returns always error.
 func (e *SelectQueryExecutor) Exec() (sql.Result, error) {
 	return nil, errors.New("SelectQueryExecutor cannot invoke Exec()")
 }

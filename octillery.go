@@ -14,10 +14,11 @@ import (
 	osql "go.knocknote.io/octillery/database/sql"
 	"go.knocknote.io/octillery/debug"
 	"go.knocknote.io/octillery/exec"
-	_ "go.knocknote.io/octillery/plugin"
+	_ "go.knocknote.io/octillery/plugin" // load database adapter plugin
 	"go.knocknote.io/octillery/sqlparser"
 )
 
+// Version is the variable for versioning Octillery
 const Version = "v1.0.0"
 
 // LoadConfig load your database configuration file.
@@ -59,10 +60,9 @@ func Exec(db *osql.DB, queryText string) ([]*sql.Rows, sql.Result, error) {
 		if conn.IsShard {
 			rows, err := exec.NewQueryExecutor(nil, conn, nil, query).Query()
 			return rows, nil, errors.WithStack(err)
-		} else {
-			rows, err := conn.Connection.Query(queryText)
-			return []*sql.Rows{rows}, nil, errors.WithStack(err)
 		}
+		rows, err := conn.Connection.Query(queryText)
+		return []*sql.Rows{rows}, nil, errors.WithStack(err)
 	}
 
 	if conn.IsShard {

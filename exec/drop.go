@@ -9,22 +9,27 @@ import (
 	"go.knocknote.io/octillery/sqlparser"
 )
 
+// DropQueryExecutor inherits QueryExecutorBase structure
 type DropQueryExecutor struct {
 	*QueryExecutorBase
 }
 
+// NewDropQueryExecutor creates instance of DropQueryExecutor
 func NewDropQueryExecutor(base *QueryExecutorBase) *DropQueryExecutor {
 	return &DropQueryExecutor{base}
 }
 
+// Query doesn't support in DropQueryExecutor, returns always error.
 func (e *DropQueryExecutor) Query() ([]*sql.Rows, error) {
 	return nil, errors.New("DropQueryExecutor cannot invoke Query()")
 }
 
+// QueryRow doesn't support in DropQueryExecutor, returns always error.
 func (e *DropQueryExecutor) QueryRow() (*sql.Row, error) {
 	return nil, errors.New("DropQueryExecutor cannot invoke QueryRow()")
 }
 
+// Exec executes `DROP TABLE` DDL for shards
 func (e *DropQueryExecutor) Exec() (sql.Result, error) {
 	debug.Printf("drop table for shards")
 	query, ok := e.query.(*sqlparser.QueryBase)

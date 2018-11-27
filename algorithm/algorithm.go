@@ -43,7 +43,7 @@ func Register(name string, algorithmFactory func() ShardingAlgorithm) {
 func LoadShardingAlgorithm(name string) (ShardingAlgorithm, error) {
 	algorithmFactory := algorithms[name]
 	if algorithmFactory == nil {
-		return nil, errors.Errorf("cannnot load sharding algorithm from %s", name)
+		return nil, errors.Errorf("cannot load sharding algorithm from %s", name)
 	}
 	return algorithmFactory(), nil
 }

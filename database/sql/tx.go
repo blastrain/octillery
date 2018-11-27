@@ -12,13 +12,17 @@ import (
 	"go.knocknote.io/octillery/sqlparser"
 )
 
+// Tx the compatible type of Tx in 'database/sql' package.
 type Tx struct {
-	tx           *connection.TxConnection
-	connMgr      *connection.DBConnectionManager
-	ctx          context.Context
-	opts         *core.TxOptions
+	tx      *connection.TxConnection
+	connMgr *connection.DBConnectionManager
+	ctx     context.Context
+	opts    *core.TxOptions
+
+	// WriteQueries informations of executed INSERT/UPDATE/DELETE query
 	WriteQueries []*QueryLog
-	ReadQueries  []*QueryLog
+	// ReadQueries informations of executed SELECT query
+	ReadQueries []*QueryLog
 }
 
 func (proxy *Tx) connectionAndQuery(queryText string, args ...interface{}) (*connection.DBConnection, sqlparser.Query, error) {
@@ -169,6 +173,7 @@ func (proxy *Tx) error(baseErr error) error {
 	return errors.Wrapf(baseErr, "queries = %s", string(bytes))
 }
 
+// Commit the compatible method of Commit in 'database/sql' package.
 func (proxy *Tx) Commit() error {
 	debug.Printf("Tx.Commit()")
 	if err := proxy.tx.Commit(); err != nil {
@@ -177,6 +182,7 @@ func (proxy *Tx) Commit() error {
 	return nil
 }
 
+// Rollback the compatible method of Rollback in 'database/sql' package.
 func (proxy *Tx) Rollback() error {
 	debug.Printf("Tx.Rollback()")
 	if err := proxy.tx.Rollback(); err != nil {
@@ -185,6 +191,7 @@ func (proxy *Tx) Rollback() error {
 	return nil
 }
 
+// PrepareContext the compatible method of PrepareContext in 'database/sql' package.
 func (proxy *Tx) PrepareContext(ctx context.Context, query string) (*Stmt, error) {
 	debug.Printf("Tx.PrepareContext: %s", query)
 	stmt, err := proxy.prepareProxy(ctx, query)
@@ -194,6 +201,7 @@ func (proxy *Tx) PrepareContext(ctx context.Context, query string) (*Stmt, error
 	return &Stmt{core: stmt, query: query}, nil
 }
 
+// Prepare the compatible method of Prepare in 'database/sql' package.
 func (proxy *Tx) Prepare(query string) (*Stmt, error) {
 	debug.Printf("Tx.Prepare: %s", query)
 	stmt, err := proxy.prepareProxy(nil, query)
@@ -203,6 +211,7 @@ func (proxy *Tx) Prepare(query string) (*Stmt, error) {
 	return &Stmt{core: stmt, query: query}, nil
 }
 
+// StmtContext the compatible method of StmtContext in 'database/sql' package.
 func (proxy *Tx) StmtContext(ctx context.Context, stmt *Stmt) *Stmt {
 	debug.Printf("Tx.StmtContext")
 	result, err := proxy.stmtProxy(ctx, stmt)
@@ -212,6 +221,7 @@ func (proxy *Tx) StmtContext(ctx context.Context, stmt *Stmt) *Stmt {
 	return &Stmt{core: result, query: stmt.query}
 }
 
+// Stmt the compatible method of Stmt in 'database/sql' package.
 func (proxy *Tx) Stmt(stmt *Stmt) *Stmt {
 	debug.Printf("Tx.Stmt")
 	result, err := proxy.stmtProxy(nil, stmt)
@@ -221,6 +231,7 @@ func (proxy *Tx) Stmt(stmt *Stmt) *Stmt {
 	return &Stmt{core: result, query: stmt.query}
 }
 
+// ExecContext the compatible method of ExecContext in 'database/sql' package.
 func (proxy *Tx) ExecContext(ctx context.Context, query string, args ...interface{}) (Result, error) {
 	debug.Printf("Tx.ExecContext: %s", query)
 	result, err := proxy.execProxy(ctx, query, args...)
@@ -239,6 +250,7 @@ func (proxy *Tx) ExecContext(ctx context.Context, query string, args ...interfac
 	return result, nil
 }
 
+// Exec the compatible method of Exec in 'database/sql' package.
 func (proxy *Tx) Exec(query string, args ...interface{}) (Result, error) {
 	debug.Printf("Tx.Exec: %s", query)
 	result, err := proxy.execProxy(nil, query, args...)
@@ -257,6 +269,7 @@ func (proxy *Tx) Exec(query string, args ...interface{}) (Result, error) {
 	return result, nil
 }
 
+// QueryContext the compatible method of QueryContext in 'database/sql' package.
 func (proxy *Tx) QueryContext(ctx context.Context, query string, args ...interface{}) (*Rows, error) {
 	debug.Printf("Tx.QueryContext: %s", query)
 	rows, err := proxy.queryProxy(ctx, query, args...)
@@ -270,6 +283,7 @@ func (proxy *Tx) QueryContext(ctx context.Context, query string, args ...interfa
 	return rows, nil
 }
 
+// Query the compatible method of Query in 'database/sql' package.
 func (proxy *Tx) Query(query string, args ...interface{}) (*Rows, error) {
 	debug.Printf("Tx.Query: %s", query)
 	rows, err := proxy.queryProxy(nil, query, args...)
@@ -283,6 +297,7 @@ func (proxy *Tx) Query(query string, args ...interface{}) (*Rows, error) {
 	return rows, nil
 }
 
+// QueryRowContext the compatible method of QueryRowContext in 'database/sql' package.
 func (proxy *Tx) QueryRowContext(ctx context.Context, query string, args ...interface{}) *Row {
 	debug.Printf("Tx.QueryRowContext: %s", query)
 	proxy.ReadQueries = append(proxy.ReadQueries, &QueryLog{
@@ -292,6 +307,7 @@ func (proxy *Tx) QueryRowContext(ctx context.Context, query string, args ...inte
 	return proxy.queryRowProxy(ctx, query, args...)
 }
 
+// QueryRow the compatible method of QueryRow in 'database/sql' package.
 func (proxy *Tx) QueryRow(query string, args ...interface{}) *Row {
 	debug.Printf("Tx.QueryRow: %s", query)
 	proxy.ReadQueries = append(proxy.ReadQueries, &QueryLog{

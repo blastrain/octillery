@@ -12,6 +12,7 @@ import (
 	"go.knocknote.io/octillery/debug"
 )
 
+// Parser the structure for parsing SQL
 type Parser struct {
 	cfg   *config.Config
 	query *Query
@@ -61,33 +62,41 @@ func (p *Parser) parseShardColumnPlaceholderIndex(valExpr vtparser.Expr) int {
 	return 0
 }
 
+func (p *Parser) parseVal(val *vtparser.SQLVal, queryBase *QueryBase) error {
+	if val.Type != vtparser.ValArg {
+		id, err := strconv.Atoi(string(val.Val))
+		if err != nil {
+			return errors.WithStack(err)
+		}
+		queryBase.ShardKeyID = Identifier(id)
+		return nil
+	}
+
+	placeholderIndex := p.parseShardColumnPlaceholderIndex(val)
+	if placeholderIndex == 0 {
+		return errors.New("cannot parse shard_key column provided by query argument")
+	}
+	queryBase.ShardKeyIDPlaceholderIndex = placeholderIndex
+	if len(queryBase.Args) >= placeholderIndex {
+		arg := queryBase.Args[placeholderIndex-1]
+		switch argType := arg.(type) {
+		case int, int8, int16, int32, int64:
+			queryBase.ShardKeyID = Identifier(argType.(int64))
+		case uint, uint8, uint16, uint32, uint64:
+			queryBase.ShardKeyID = Identifier(argType.(uint64))
+		default:
+			return errors.Errorf("unsupport shard_key type %s", reflect.TypeOf(arg))
+		}
+	}
+	return nil
+}
+
 func (p *Parser) parseExpr(expr vtparser.Expr, queryBase *QueryBase) error {
 	switch valExpr := expr.(type) {
 	case *vtparser.SQLVal:
 		// directly includes shard_key id in query
-		if valExpr.Type == vtparser.ValArg {
-			placeholderIndex := p.parseShardColumnPlaceholderIndex(valExpr)
-			if placeholderIndex == 0 {
-				return errors.New("cannot parse shard_key column provided by query argument")
-			}
-			queryBase.ShardKeyIDPlaceholderIndex = placeholderIndex
-			if len(queryBase.Args) >= placeholderIndex {
-				arg := queryBase.Args[placeholderIndex-1]
-				switch argType := arg.(type) {
-				case int, int8, int32, int64:
-					queryBase.ShardKeyID = Identifier(argType.(int64))
-				case uint, uint8, uint32, uint64:
-					queryBase.ShardKeyID = Identifier(argType.(uint64))
-				default:
-					return errors.Errorf("unsupport shard_key type %s", reflect.TypeOf(arg))
-				}
-			}
-		} else {
-			id, err := strconv.Atoi(string(valExpr.Val))
-			if err != nil {
-				return errors.WithStack(err)
-			}
-			queryBase.ShardKeyID = Identifier(id)
+		if err := p.parseVal(valExpr, queryBase); err != nil {
+			return errors.WithStack(err)
 		}
 	case *vtparser.AndExpr:
 		if err := p.parseExpr(valExpr.Left, queryBase); err != nil {
@@ -187,7 +196,7 @@ func (p *Parser) replaceInsertValueFromValArg(query *InsertQuery, colIndex int, 
 				Val:  []byte(arg),
 			}
 		}
-	case int, int8, int32, int64:
+	case int, int8, int16, int32, int64:
 		if colName == p.shardKeyColumnName(query.TableName) {
 			query.ShardKeyID = Identifier(arg.(int64))
 		}
@@ -197,7 +206,7 @@ func (p *Parser) replaceInsertValueFromValArg(query *InsertQuery, colIndex int, 
 				Val:  []byte(fmt.Sprintf("%d", arg)),
 			}
 		}
-	case uint, uint8, uint32, uint64:
+	case uint, uint8, uint16, uint32, uint64:
 		if colName == p.shardKeyColumnName(query.TableName) {
 			query.ShardKeyID = Identifier(int64(arg.(uint64)))
 		}
@@ -337,7 +346,7 @@ func (p *Parser) parseDeleteStmt(stmt *vtparser.Delete, queryBase *QueryBase) (Q
 			return nil, errors.WithStack(err)
 		}
 	}
-	query.SetStateAfterParsing()
+	query.setStateAfterParsing()
 	return query, nil
 }
 
@@ -375,6 +384,8 @@ func (p *Parser) formatQuery(query string) string {
 	return formattedQuery
 }
 
+// Parse parse SQL/DDL by [knocknote/vitess-sqlparser](https://github.com/knocknote/vitess-sqlparser),
+// it returns Query interface includes table name or query type
 func (p *Parser) Parse(queryText string, args ...interface{}) (Query, error) {
 	formattedQueryText := p.formatQuery(queryText)
 	ast, err := vtparser.Parse(formattedQueryText)
@@ -431,6 +442,8 @@ func (p *Parser) Parse(queryText string, args ...interface{}) (Query, error) {
 	return nil, errors.Errorf("unsupported query type %s", reflect.TypeOf(ast))
 }
 
+// New creates Parser instance.
+// If doesn't load configuration file before calling this, returns error.
 func New() (*Parser, error) {
 	cfg, err := config.Get()
 	if err != nil {

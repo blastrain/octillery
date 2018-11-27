@@ -13,16 +13,19 @@ import (
 	"go.knocknote.io/octillery/sqlparser"
 )
 
+// QueryLog type for storing information of executed query
 type QueryLog struct {
 	Query        string        `json:"query"`
 	Args         []interface{} `json:"args"`
 	LastInsertID int64         `json:"lastInsertId"`
 }
 
+// DB the compatible structure of DB in 'database/sql' package.
 type DB struct {
 	connMgr *connection.DBConnectionManager
 }
 
+// Open the compatible method of Open in 'database/sql' package.
 func Open(driverName, dataSourceName string) (*DB, error) {
 	mgr, err := connection.NewConnectionManager()
 	if err != nil {
@@ -34,40 +37,54 @@ func Open(driverName, dataSourceName string) (*DB, error) {
 	return &DB{connMgr: mgr}, nil
 }
 
+// ConnectionManager returns instance that manage all database connections.
 func (db *DB) ConnectionManager() *connection.DBConnectionManager {
 	return db.connMgr
 }
 
+// PingContext the compatible method of PingContext in 'database/sql' package.
+// Currently, PingContext is ignored.
 func (db *DB) PingContext(ctx context.Context) error {
 	// ignore pingContext
 	return nil
 }
 
+// Ping the compatible method of Ping in 'database/sql' package.
+// Currently, Ping is ignored.
 func (db *DB) Ping() error {
 	// ignore Ping
 	return nil
 }
 
+// Close the compatible method of Close in 'database/sql' package.
 func (db *DB) Close() error {
 	return db.connMgr.Close()
 }
 
+// SetMaxIdleConns the compatible method of SetMaxIdleConns in 'database/sql' package,
+// call SetMaxIdleConns for all opened connections.
 func (db *DB) SetMaxIdleConns(n int) {
 	db.connMgr.SetMaxIdleConns(n)
 }
 
+// SetMaxOpenConns the compatible method of SetMaxOpenConns in 'database/sql' package,
+// call SetMaxOpenConns for all opened connections.
 func (db *DB) SetMaxOpenConns(n int) {
 	db.connMgr.SetMaxOpenConns(n)
 }
 
+// SetConnMaxLifetime the compatible method of SetConnMaxLifetime in 'database/sql' package,
+// call SetConnMaxLifetime for all opened connections.
 func (db *DB) SetConnMaxLifetime(d time.Duration) {
 	db.connMgr.SetConnMaxLifetime(d)
 }
 
+// Stats the compatible method of Stats in 'database/sql' package.
 func (db *DB) Stats() DBStats {
 	return DBStats{}
 }
 
+// PrepareContext the compatible method of PrepareContext in 'database/sql' package.
 func (db *DB) PrepareContext(ctx context.Context, query string) (*Stmt, error) {
 	debug.Printf("DB.PrepareContext: %s", query)
 	stmt, err := db.prepareProxy(ctx, query)
@@ -77,6 +94,7 @@ func (db *DB) PrepareContext(ctx context.Context, query string) (*Stmt, error) {
 	return &Stmt{core: stmt, query: query}, nil
 }
 
+// Prepare the compatible method of Prepare in 'database/sql' package.
 func (db *DB) Prepare(query string) (*Stmt, error) {
 	debug.Printf("DB.Prepare: %s", query)
 	stmt, err := db.prepareProxy(nil, query)
@@ -86,6 +104,7 @@ func (db *DB) Prepare(query string) (*Stmt, error) {
 	return &Stmt{core: stmt, query: query}, nil
 }
 
+// ExecContext the compatible method of ExecContext in 'database/sql' package.
 func (db *DB) ExecContext(ctx context.Context, query string, args ...interface{}) (Result, error) {
 	debug.Printf("DB.ExecContext: %s", query)
 	result, err := db.execProxy(ctx, query, args...)
@@ -95,6 +114,7 @@ func (db *DB) ExecContext(ctx context.Context, query string, args ...interface{}
 	return result, nil
 }
 
+// Exec the compatible method of Exec in 'database/sql' package.
 func (db *DB) Exec(query string, args ...interface{}) (Result, error) {
 	debug.Printf("DB.Exec: %s", query)
 	result, err := db.execProxy(nil, query, args...)
@@ -104,6 +124,7 @@ func (db *DB) Exec(query string, args ...interface{}) (Result, error) {
 	return result, nil
 }
 
+// QueryContext the compatible method of QueryContext in 'database/sql' package.
 func (db *DB) QueryContext(ctx context.Context, query string, args ...interface{}) (*Rows, error) {
 	debug.Printf("DB.QueryContext: %s", query)
 	rows, err := db.queryProxy(ctx, query, args...)
@@ -113,6 +134,7 @@ func (db *DB) QueryContext(ctx context.Context, query string, args ...interface{
 	return rows, nil
 }
 
+// Query the compatible method of Query in 'database/sql' package.
 func (db *DB) Query(query string, args ...interface{}) (*Rows, error) {
 	debug.Printf("DB.Query: %s", query)
 	rows, err := db.queryProxy(nil, query, args...)
@@ -122,16 +144,19 @@ func (db *DB) Query(query string, args ...interface{}) (*Rows, error) {
 	return rows, nil
 }
 
+// QueryRowContext the compatible method of QueryRowContext in 'database/sql' package.
 func (db *DB) QueryRowContext(ctx context.Context, query string, args ...interface{}) *Row {
 	debug.Printf("DB.QueryRowContext: %s", query)
 	return db.queryRowProxy(ctx, query, args...)
 }
 
+// QueryRow the compatible method of QueryRow in 'database/sql' package.
 func (db *DB) QueryRow(query string, args ...interface{}) *Row {
 	debug.Printf("DB.QueryRow: %s", query)
 	return db.queryRowProxy(nil, query, args...)
 }
 
+// BeginTx the compatible method of BeginTx in 'database/sql' package.
 func (db *DB) BeginTx(ctx context.Context, opts *TxOptions) (*Tx, error) {
 	debug.Printf("DB.BeginTx")
 	if db.connMgr == nil {
@@ -154,6 +179,7 @@ func (db *DB) BeginTx(ctx context.Context, opts *TxOptions) (*Tx, error) {
 	}, nil
 }
 
+// Begin the compatible method of Begin in 'database/sql' package.
 func (db *DB) Begin() (*Tx, error) {
 	debug.Printf("DB.Begin()")
 	if db.connMgr == nil {
@@ -169,6 +195,7 @@ func (db *DB) Begin() (*Tx, error) {
 	}, nil
 }
 
+// Driver the compatible method of Driver in 'database/sql' package.
 func (db *DB) Driver() coredriver.Driver {
 	debug.Printf("DB.Driver()")
 	return nil

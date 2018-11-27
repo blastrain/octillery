@@ -8,22 +8,27 @@ import (
 	"go.knocknote.io/octillery/sqlparser"
 )
 
+// CreateTableQueryExecutor inherits QueryExecutorBase structure
 type CreateTableQueryExecutor struct {
 	*QueryExecutorBase
 }
 
+// NewCreateTableQueryExecutor creates instance of CreateTableQueryExecutor
 func NewCreateTableQueryExecutor(base *QueryExecutorBase) *CreateTableQueryExecutor {
 	return &CreateTableQueryExecutor{base}
 }
 
+// Query doesn't support in CreateTableQueryExecutor, returns always error.
 func (e *CreateTableQueryExecutor) Query() ([]*sql.Rows, error) {
 	return nil, errors.New("CreateTableQueryExecutor cannot invoke Query()")
 }
 
+// QueryRow doesn't support in CreateTableQueryExecutor, returns always error.
 func (e *CreateTableQueryExecutor) QueryRow() (*sql.Row, error) {
 	return nil, errors.New("CreateTableQueryExecutor cannot invoke QueryRow()")
 }
 
+// Exec executes `CREATE TABLE` DDL for shards.
 func (e *CreateTableQueryExecutor) Exec() (sql.Result, error) {
 	debug.Printf("create table for shards")
 	query, ok := e.query.(*sqlparser.QueryBase)

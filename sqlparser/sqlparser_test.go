@@ -112,370 +112,419 @@ func TestSELECT(t *testing.T) {
 	})
 }
 
-func TestINSERT(t *testing.T) {
+func testInsertWithShardColumnTable(t *testing.T, tableName string) {
 	parser, err := New()
 	checkErr(t, err)
-	t.Run("sharding table", func(t *testing.T) {
+	t.Run("simple insert query", func(t *testing.T) {
+		text := fmt.Sprintf("insert into %s(id, name) values (null, 'bob')", tableName)
+		query, err := parser.Parse(text)
+		checkErr(t, err)
+		if query.QueryType() != Insert {
+			t.Fatal("cannot parse 'insert' query")
+		}
+		if query.Table() != tableName {
+			t.Fatal("cannot parse 'insert' query")
+		}
+		insertQuery := query.(*InsertQuery)
+		if len(insertQuery.ColumnValues) != 2 {
+			t.Fatal("cannot parse")
+		}
+		insertQuery.SetNextSequenceID(1) // simulate sequencer's action
+		if string(insertQuery.ColumnValues[0]().Val) != "1" {
+			t.Fatal("cannot parse column values")
+		}
+		if insertQuery.ColumnValues[1] != nil {
+			t.Fatal("cannot parse column values")
+		}
+	})
+	t.Run("insert query with placeholder", func(t *testing.T) {
+		text := fmt.Sprintf("insert into %s(id, name) values (null, ?)", tableName)
+		query, err := parser.Parse(text, "bob")
+		checkErr(t, err)
+		if query.QueryType() != Insert {
+			t.Fatal("cannot parse 'insert' query")
+		}
+		if query.Table() != tableName {
+			t.Fatal("cannot parse 'insert' query")
+		}
+		insertQuery := query.(*InsertQuery)
+		if len(insertQuery.ColumnValues) != 2 {
+			t.Fatal("cannot parse")
+		}
+		insertQuery.SetNextSequenceID(2) // simulate sequencer's action
+		if string(insertQuery.ColumnValues[0]().Val) != "2" {
+			t.Fatal("cannot parse column values")
+		}
+		if string(insertQuery.ColumnValues[1]().Val) != "bob" {
+			t.Fatal("cannot parse column values")
+		}
+	})
+}
+
+func testInsertWithShardKeyTable(t *testing.T, tableName string) {
+	parser, err := New()
+	checkErr(t, err)
+	t.Run("simple insert query", func(t *testing.T) {
+		text := fmt.Sprintf("insert into %s(id, user_id) values (null, %d)", tableName, 1)
+		query, err := parser.Parse(text)
+		checkErr(t, err)
+		if query.QueryType() != Insert {
+			t.Fatal("cannot parse 'insert' query")
+		}
+		if query.Table() != tableName {
+			t.Fatal("cannot parse 'insert' query")
+		}
+		insertQuery := query.(*InsertQuery)
+		if len(insertQuery.ColumnValues) != 2 {
+			t.Fatal("cannot parse")
+		}
+		if insertQuery.ColumnValues[0] != nil {
+			t.Fatal("cannot parse column values")
+		}
+		if insertQuery.ColumnValues[1] != nil {
+			t.Fatal("cannot parse column values")
+		}
+	})
+	t.Run("insert query with placeholder", func(t *testing.T) {
+		text := fmt.Sprintf("insert into %s(id, user_id) values (null, ?)", tableName)
+		query, err := parser.Parse(text, uint64(1))
+		checkErr(t, err)
+		if query.QueryType() != Insert {
+			t.Fatal("cannot parse 'insert' query")
+		}
+		if query.Table() != tableName {
+			t.Fatal("cannot parse 'insert' query")
+		}
+		insertQuery := query.(*InsertQuery)
+		if len(insertQuery.ColumnValues) != 2 {
+			t.Fatal("cannot parse")
+		}
+		if insertQuery.ColumnValues[0] != nil {
+			t.Fatal("cannot parse column values")
+		}
+		if string(insertQuery.ColumnValues[1]().Val) != "1" {
+			t.Fatal("cannot parse column values")
+		}
+		if insertQuery.String() != "insert into user_items(id, user_id) values (null, 1)" {
+			t.Fatal("cannot generate parsed query")
+		}
+	})
+}
+
+func testInsertWithShardColumnAndShardKeyTable(t *testing.T, tableName string) {
+	parser, err := New()
+	checkErr(t, err)
+	t.Run("simple insert query", func(t *testing.T) {
+		text := fmt.Sprintf("insert into %s(id, user_id) values (null, %d)", tableName, 1)
+		query, err := parser.Parse(text)
+		checkErr(t, err)
+		if query.QueryType() != Insert {
+			t.Fatal("cannot parse 'insert' query")
+		}
+		if query.Table() != tableName {
+			t.Fatal("cannot parse 'insert' query")
+		}
+		insertQuery := query.(*InsertQuery)
+		insertQuery.SetNextSequenceID(3) // simulate sequencer's action
+		if len(insertQuery.ColumnValues) != 2 {
+			t.Fatal("cannot parse")
+		}
+		if string(insertQuery.ColumnValues[0]().Val) != "3" {
+			t.Fatal("cannot parse column values")
+		}
+		if insertQuery.ColumnValues[1] != nil {
+			t.Fatal("cannot parse column values")
+		}
+	})
+	t.Run("insert query with placeholder", func(t *testing.T) {
+		text := fmt.Sprintf("insert into %s(id, user_id) values (null, ?)", tableName)
+		query, err := parser.Parse(text, uint64(1))
+		checkErr(t, err)
+		if query.QueryType() != Insert {
+			t.Fatal("cannot parse 'insert' query")
+		}
+		if query.Table() != tableName {
+			t.Fatal("cannot parse 'insert' query")
+		}
+		insertQuery := query.(*InsertQuery)
+		insertQuery.SetNextSequenceID(4) // simulate sequencer's action
+		if len(insertQuery.ColumnValues) != 2 {
+			t.Fatal("cannot parse")
+		}
+		if string(insertQuery.ColumnValues[0]().Val) != "4" {
+			t.Fatal("cannot parse column values")
+		}
+		if string(insertQuery.ColumnValues[1]().Val) != "1" {
+			t.Fatal("cannot parse column values")
+		}
+		if insertQuery.String() != "insert into user_decks(id, user_id) values (4, 1)" {
+			t.Fatal("cannot generate parsed query")
+		}
+	})
+}
+
+func testINSERTWithShardingTable(t *testing.T) {
+	t.Run("use shard_column table", func(t *testing.T) {
 		t.Run("use shard_column table", func(t *testing.T) {
-			tableName := "users"
-			t.Run("simple insert query", func(t *testing.T) {
-				text := fmt.Sprintf("insert into %s(id, name) values (null, 'bob')", tableName)
-				query, err := parser.Parse(text)
-				checkErr(t, err)
-				if query.QueryType() != Insert {
-					t.Fatal("cannot parse 'insert' query")
-				}
-				if query.Table() != tableName {
-					t.Fatal("cannot parse 'insert' query")
-				}
-				insertQuery := query.(*InsertQuery)
-				if len(insertQuery.ColumnValues) != 2 {
-					t.Fatal("cannot parse")
-				}
-				insertQuery.SetNextSequenceID(1) // simulate sequencer's action
-				if string(insertQuery.ColumnValues[0]().Val) != "1" {
-					t.Fatal("cannot parse column values")
-				}
-				if insertQuery.ColumnValues[1] != nil {
-					t.Fatal("cannot parse column values")
-				}
-			})
-			t.Run("insert query with placeholder", func(t *testing.T) {
-				text := fmt.Sprintf("insert into %s(id, name) values (null, ?)", tableName)
-				query, err := parser.Parse(text, "bob")
-				checkErr(t, err)
-				if query.QueryType() != Insert {
-					t.Fatal("cannot parse 'insert' query")
-				}
-				if query.Table() != tableName {
-					t.Fatal("cannot parse 'insert' query")
-				}
-				insertQuery := query.(*InsertQuery)
-				if len(insertQuery.ColumnValues) != 2 {
-					t.Fatal("cannot parse")
-				}
-				insertQuery.SetNextSequenceID(2) // simulate sequencer's action
-				if string(insertQuery.ColumnValues[0]().Val) != "2" {
-					t.Fatal("cannot parse column values")
-				}
-				if string(insertQuery.ColumnValues[1]().Val) != "bob" {
-					t.Fatal("cannot parse column values")
-				}
-			})
+			testInsertWithShardColumnTable(t, "users")
 		})
 		t.Run("use shard_key table", func(t *testing.T) {
-			tableName := "user_items"
-			t.Run("simple insert query", func(t *testing.T) {
-				text := fmt.Sprintf("insert into %s(id, user_id) values (null, %d)", tableName, 1)
-				query, err := parser.Parse(text)
-				checkErr(t, err)
-				if query.QueryType() != Insert {
-					t.Fatal("cannot parse 'insert' query")
-				}
-				if query.Table() != tableName {
-					t.Fatal("cannot parse 'insert' query")
-				}
-				insertQuery := query.(*InsertQuery)
-				if len(insertQuery.ColumnValues) != 2 {
-					t.Fatal("cannot parse")
-				}
-				if insertQuery.ColumnValues[0] != nil {
-					t.Fatal("cannot parse column values")
-				}
-				if insertQuery.ColumnValues[1] != nil {
-					t.Fatal("cannot parse column values")
-				}
-			})
-			t.Run("insert query with placeholder", func(t *testing.T) {
-				text := fmt.Sprintf("insert into %s(id, user_id) values (null, ?)", tableName)
-				query, err := parser.Parse(text, uint64(1))
-				checkErr(t, err)
-				if query.QueryType() != Insert {
-					t.Fatal("cannot parse 'insert' query")
-				}
-				if query.Table() != tableName {
-					t.Fatal("cannot parse 'insert' query")
-				}
-				insertQuery := query.(*InsertQuery)
-				if len(insertQuery.ColumnValues) != 2 {
-					t.Fatal("cannot parse")
-				}
-				if insertQuery.ColumnValues[0] != nil {
-					t.Fatal("cannot parse column values")
-				}
-				if string(insertQuery.ColumnValues[1]().Val) != "1" {
-					t.Fatal("cannot parse column values")
-				}
-				if insertQuery.String() != "insert into user_items(id, user_id) values (null, 1)" {
-					t.Fatal("cannot generate parsed query")
-				}
-			})
+			testInsertWithShardKeyTable(t, "user_items")
 		})
 		t.Run("use shard_column and shard_key table", func(t *testing.T) {
-			tableName := "user_decks"
-			t.Run("simple insert query", func(t *testing.T) {
-				text := fmt.Sprintf("insert into %s(id, user_id) values (null, %d)", tableName, 1)
-				query, err := parser.Parse(text)
-				checkErr(t, err)
-				if query.QueryType() != Insert {
-					t.Fatal("cannot parse 'insert' query")
-				}
-				if query.Table() != tableName {
-					t.Fatal("cannot parse 'insert' query")
-				}
-				insertQuery := query.(*InsertQuery)
-				insertQuery.SetNextSequenceID(3) // simulate sequencer's action
-				if len(insertQuery.ColumnValues) != 2 {
-					t.Fatal("cannot parse")
-				}
-				if string(insertQuery.ColumnValues[0]().Val) != "3" {
-					t.Fatal("cannot parse column values")
-				}
-				if insertQuery.ColumnValues[1] != nil {
-					t.Fatal("cannot parse column values")
-				}
-			})
-			t.Run("insert query with placeholder", func(t *testing.T) {
-				text := fmt.Sprintf("insert into %s(id, user_id) values (null, ?)", tableName)
-				query, err := parser.Parse(text, uint64(1))
-				checkErr(t, err)
-				if query.QueryType() != Insert {
-					t.Fatal("cannot parse 'insert' query")
-				}
-				if query.Table() != tableName {
-					t.Fatal("cannot parse 'insert' query")
-				}
-				insertQuery := query.(*InsertQuery)
-				insertQuery.SetNextSequenceID(4) // simulate sequencer's action
-				if len(insertQuery.ColumnValues) != 2 {
-					t.Fatal("cannot parse")
-				}
-				if string(insertQuery.ColumnValues[0]().Val) != "4" {
-					t.Fatal("cannot parse column values")
-				}
-				if string(insertQuery.ColumnValues[1]().Val) != "1" {
-					t.Fatal("cannot parse column values")
-				}
-				if insertQuery.String() != "insert into user_decks(id, user_id) values (4, 1)" {
-					t.Fatal("cannot generate parsed query")
-				}
-			})
+			testInsertWithShardColumnAndShardKeyTable(t, "user_decks")
 		})
 	})
+}
+
+func testInsertWithNotShardingTable(t *testing.T) {
+	parser, err := New()
+	checkErr(t, err)
+	tableName := "user_stages"
+	t.Run("simple insert query", func(t *testing.T) {
+		text := fmt.Sprintf("insert into %s(id, name) values (null, 'bob')", tableName)
+		query, err := parser.Parse(text)
+		checkErr(t, err)
+		if query.QueryType() != Insert {
+			t.Fatal("cannot parse 'insert' query")
+		}
+		if query.Table() != tableName {
+			t.Fatal("cannot parse 'insert' query")
+		}
+		insertQuery := query.(*InsertQuery)
+		if len(insertQuery.ColumnValues) != 2 {
+			t.Fatal("cannot parse")
+		}
+		if insertQuery.ColumnValues[0] != nil {
+			t.Fatal("cannot parse column values")
+		}
+		if insertQuery.ColumnValues[1] != nil {
+			t.Fatal("cannot parse column values")
+		}
+	})
+	t.Run("insert query with placeholder", func(t *testing.T) {
+		text := fmt.Sprintf("insert into %s(id, name) values (null, ?)", tableName)
+		query, err := parser.Parse(text, "bob")
+		checkErr(t, err)
+		if query.QueryType() != Insert {
+			t.Fatal("cannot parse 'insert' query")
+		}
+		if query.Table() != tableName {
+			t.Fatal("cannot parse 'insert' query")
+		}
+		insertQuery := query.(*InsertQuery)
+		if len(insertQuery.ColumnValues) != 2 {
+			t.Fatal("cannot parse")
+		}
+		if insertQuery.ColumnValues[0] != nil {
+			t.Fatal("cannot parse column values")
+		}
+		if string(insertQuery.ColumnValues[1]().Val) != "bob" {
+			t.Fatal("cannot parse column values")
+		}
+	})
+}
+
+func TestINSERT(t *testing.T) {
+	t.Run("sharding table", func(t *testing.T) {
+		testINSERTWithShardingTable(t)
+	})
 	t.Run("not sharding table", func(t *testing.T) {
-		tableName := "user_stages"
-		t.Run("simple insert query", func(t *testing.T) {
-			text := fmt.Sprintf("insert into %s(id, name) values (null, 'bob')", tableName)
-			query, err := parser.Parse(text)
-			checkErr(t, err)
-			if query.QueryType() != Insert {
-				t.Fatal("cannot parse 'insert' query")
-			}
-			if query.Table() != tableName {
-				t.Fatal("cannot parse 'insert' query")
-			}
-			insertQuery := query.(*InsertQuery)
-			if len(insertQuery.ColumnValues) != 2 {
-				t.Fatal("cannot parse")
-			}
-			if insertQuery.ColumnValues[0] != nil {
-				t.Fatal("cannot parse column values")
-			}
-			if insertQuery.ColumnValues[1] != nil {
-				t.Fatal("cannot parse column values")
-			}
-		})
-		t.Run("insert query with placeholder", func(t *testing.T) {
-			text := fmt.Sprintf("insert into %s(id, name) values (null, ?)", tableName)
-			query, err := parser.Parse(text, "bob")
-			checkErr(t, err)
-			if query.QueryType() != Insert {
-				t.Fatal("cannot parse 'insert' query")
-			}
-			if query.Table() != tableName {
-				t.Fatal("cannot parse 'insert' query")
-			}
-			insertQuery := query.(*InsertQuery)
-			if len(insertQuery.ColumnValues) != 2 {
-				t.Fatal("cannot parse")
-			}
-			if insertQuery.ColumnValues[0] != nil {
-				t.Fatal("cannot parse column values")
-			}
-			if string(insertQuery.ColumnValues[1]().Val) != "bob" {
-				t.Fatal("cannot parse column values")
-			}
-		})
+		testInsertWithNotShardingTable(t)
+	})
+}
+
+func testUpdateWithShardColumnTable(t *testing.T, tableName string) {
+	parser, err := New()
+	checkErr(t, err)
+	t.Run("simple update query", func(t *testing.T) {
+		text := fmt.Sprintf("update %s set name = 'alice' where id = 1", tableName)
+		query, err := parser.Parse(text)
+		checkErr(t, err)
+		if query.QueryType() != Update {
+			t.Fatal("cannot parse 'update' query")
+		}
+		if query.Table() != tableName {
+			t.Fatal("cannot parse 'update' query")
+		}
+		updateQuery := query.(*QueryBase)
+		if updateQuery.ShardKeyID != 1 {
+			t.Fatal("cannot parse")
+		}
+		if updateQuery.ShardKeyIDPlaceholderIndex != 0 {
+			t.Fatal("cannot parse")
+		}
+	})
+	t.Run("update query with placeholder", func(t *testing.T) {
+		text := fmt.Sprintf("update %s set name = 'alice' where id = ?", tableName)
+		query, err := parser.Parse(text, int64(1))
+		checkErr(t, err)
+		if query.QueryType() != Update {
+			t.Fatal("cannot parse 'update' query")
+		}
+		if query.Table() != tableName {
+			t.Fatal("cannot parse 'update' query")
+		}
+		updateQuery := query.(*QueryBase)
+		if updateQuery.ShardKeyID != 1 {
+			t.Fatal("cannot parse")
+		}
+		if updateQuery.ShardKeyIDPlaceholderIndex != 1 {
+			t.Fatal("cannot parse")
+		}
+	})
+}
+
+func testUpdateWithShardKeyTable(t *testing.T, tableName string) {
+	parser, err := New()
+	checkErr(t, err)
+	t.Run("simple update query", func(t *testing.T) {
+		text := fmt.Sprintf("update %s set name = 'alice' where user_id = 1", tableName)
+		query, err := parser.Parse(text)
+		checkErr(t, err)
+		if query.QueryType() != Update {
+			t.Fatal("cannot parse 'update' query")
+		}
+		if query.Table() != tableName {
+			t.Fatal("cannot parse 'update' query")
+		}
+		updateQuery := query.(*QueryBase)
+		if updateQuery.ShardKeyID != 1 {
+			t.Fatal("cannot parse")
+		}
+		if updateQuery.ShardKeyIDPlaceholderIndex != 0 {
+			t.Fatal("cannot parse")
+		}
+	})
+	t.Run("update query with placeholder", func(t *testing.T) {
+		text := fmt.Sprintf("update %s set name = 'alice' where user_id = ?", tableName)
+		query, err := parser.Parse(text, int64(1))
+		checkErr(t, err)
+		if query.QueryType() != Update {
+			t.Fatal("cannot parse 'update' query")
+		}
+		if query.Table() != tableName {
+			t.Fatal("cannot parse 'update' query")
+		}
+		updateQuery := query.(*QueryBase)
+		if updateQuery.ShardKeyID != 1 {
+			t.Fatal("cannot parse")
+		}
+		if updateQuery.ShardKeyIDPlaceholderIndex != 1 {
+			t.Fatal("cannot parse")
+		}
+	})
+}
+
+func testUpdateWithShardingTable(t *testing.T) {
+	t.Run("use shard_column table", func(t *testing.T) {
+		testUpdateWithShardColumnTable(t, "users")
+	})
+	t.Run("use shard_key table", func(t *testing.T) {
+		testUpdateWithShardKeyTable(t, "user_items")
 	})
 }
 
 func TestUPDATE(t *testing.T) {
+	t.Run("sharding table", func(t *testing.T) {
+		testUpdateWithShardingTable(t)
+	})
+}
+
+func testDeleteWithShardColumnTable(t *testing.T, tableName string) {
 	parser, err := New()
 	checkErr(t, err)
-	t.Run("sharding table", func(t *testing.T) {
-		t.Run("use shard_column table", func(t *testing.T) {
-			tableName := "users"
-			t.Run("simple update query", func(t *testing.T) {
-				text := fmt.Sprintf("update %s set name = 'alice' where id = 1", tableName)
-				query, err := parser.Parse(text)
-				checkErr(t, err)
-				if query.QueryType() != Update {
-					t.Fatal("cannot parse 'update' query")
-				}
-				if query.Table() != tableName {
-					t.Fatal("cannot parse 'update' query")
-				}
-				updateQuery := query.(*QueryBase)
-				if updateQuery.ShardKeyID != 1 {
-					t.Fatal("cannot parse")
-				}
-				if updateQuery.ShardKeyIDPlaceholderIndex != 0 {
-					t.Fatal("cannot parse")
-				}
-			})
-			t.Run("update query with placeholder", func(t *testing.T) {
-				text := fmt.Sprintf("update %s set name = 'alice' where id = ?", tableName)
-				query, err := parser.Parse(text, int64(1))
-				checkErr(t, err)
-				if query.QueryType() != Update {
-					t.Fatal("cannot parse 'update' query")
-				}
-				if query.Table() != tableName {
-					t.Fatal("cannot parse 'update' query")
-				}
-				updateQuery := query.(*QueryBase)
-				if updateQuery.ShardKeyID != 1 {
-					t.Fatal("cannot parse")
-				}
-				if updateQuery.ShardKeyIDPlaceholderIndex != 1 {
-					t.Fatal("cannot parse")
-				}
-			})
-		})
-		t.Run("use shard_key table", func(t *testing.T) {
-			tableName := "user_items"
-			t.Run("simple update query", func(t *testing.T) {
-				text := fmt.Sprintf("update %s set name = 'alice' where user_id = 1", tableName)
-				query, err := parser.Parse(text)
-				checkErr(t, err)
-				if query.QueryType() != Update {
-					t.Fatal("cannot parse 'update' query")
-				}
-				if query.Table() != tableName {
-					t.Fatal("cannot parse 'update' query")
-				}
-				updateQuery := query.(*QueryBase)
-				if updateQuery.ShardKeyID != 1 {
-					t.Fatal("cannot parse")
-				}
-				if updateQuery.ShardKeyIDPlaceholderIndex != 0 {
-					t.Fatal("cannot parse")
-				}
-			})
-			t.Run("update query with placeholder", func(t *testing.T) {
-				text := fmt.Sprintf("update %s set name = 'alice' where user_id = ?", tableName)
-				query, err := parser.Parse(text, int64(1))
-				checkErr(t, err)
-				if query.QueryType() != Update {
-					t.Fatal("cannot parse 'update' query")
-				}
-				if query.Table() != tableName {
-					t.Fatal("cannot parse 'update' query")
-				}
-				updateQuery := query.(*QueryBase)
-				if updateQuery.ShardKeyID != 1 {
-					t.Fatal("cannot parse")
-				}
-				if updateQuery.ShardKeyIDPlaceholderIndex != 1 {
-					t.Fatal("cannot parse")
-				}
-			})
-		})
+	t.Run("simple delete query", func(t *testing.T) {
+		text := fmt.Sprintf("delete from %s where id = 1", tableName)
+		query, err := parser.Parse(text)
+		checkErr(t, err)
+		if query.QueryType() != Delete {
+			t.Fatal("cannot parse 'delete' query")
+		}
+		if query.Table() != tableName {
+			t.Fatal("cannot parse 'delete' query")
+		}
+		deleteQuery := query.(*DeleteQuery)
+		if deleteQuery.ShardKeyID != 1 {
+			t.Fatal("cannot parse")
+		}
+		if deleteQuery.ShardKeyIDPlaceholderIndex != 0 {
+			t.Fatal("cannot parse")
+		}
+	})
+	t.Run("delete query with placeholder", func(t *testing.T) {
+		text := fmt.Sprintf("delete from %s where id = ?", tableName)
+		query, err := parser.Parse(text, int64(1))
+		checkErr(t, err)
+		if query.QueryType() != Delete {
+			t.Fatal("cannot parse 'delete' query")
+		}
+		if query.Table() != tableName {
+			t.Fatal("cannot parse 'delete' query")
+		}
+		deleteQuery := query.(*DeleteQuery)
+		if deleteQuery.ShardKeyID != 1 {
+			t.Fatal("cannot parse")
+		}
+		if deleteQuery.ShardKeyIDPlaceholderIndex != 1 {
+			t.Fatal("cannot parse")
+		}
+	})
+}
+
+func testDeleteWithShardKeyTable(t *testing.T, tableName string) {
+	parser, err := New()
+	checkErr(t, err)
+	t.Run("simple delete query", func(t *testing.T) {
+		text := fmt.Sprintf("delete from %s where user_id = 1", tableName)
+		query, err := parser.Parse(text)
+		checkErr(t, err)
+		if query.QueryType() != Delete {
+			t.Fatal("cannot parse 'delete' query")
+		}
+		if query.Table() != tableName {
+			t.Fatal("cannot parse 'delete' query")
+		}
+		deleteQuery := query.(*DeleteQuery)
+		if deleteQuery.ShardKeyID != 1 {
+			t.Fatal("cannot parse")
+		}
+		if deleteQuery.ShardKeyIDPlaceholderIndex != 0 {
+			t.Fatal("cannot parse")
+		}
+	})
+	t.Run("delete query with placeholder", func(t *testing.T) {
+		text := fmt.Sprintf("delete from %s where user_id = ?", tableName)
+		query, err := parser.Parse(text, int64(1))
+		checkErr(t, err)
+		if query.QueryType() != Delete {
+			t.Fatal("cannot parse 'delete' query")
+		}
+		if query.Table() != tableName {
+			t.Fatal("cannot parse 'delete' query")
+		}
+		deleteQuery := query.(*DeleteQuery)
+		if deleteQuery.ShardKeyID != 1 {
+			t.Fatal("cannot parse")
+		}
+		if deleteQuery.ShardKeyIDPlaceholderIndex != 1 {
+			t.Fatal("cannot parse")
+		}
+	})
+}
+
+func testDeleteWithShardingTable(t *testing.T) {
+	t.Run("use shard_column table", func(t *testing.T) {
+		testDeleteWithShardColumnTable(t, "users")
+	})
+	t.Run("use shard_key table", func(t *testing.T) {
+		testDeleteWithShardKeyTable(t, "user_items")
 	})
 }
 
 func TestDELETE(t *testing.T) {
-	parser, err := New()
-	checkErr(t, err)
 	t.Run("sharding table", func(t *testing.T) {
-		t.Run("use shard_column table", func(t *testing.T) {
-			tableName := "users"
-			t.Run("simple delete query", func(t *testing.T) {
-				text := fmt.Sprintf("delete from %s where id = 1", tableName)
-				query, err := parser.Parse(text)
-				checkErr(t, err)
-				if query.QueryType() != Delete {
-					t.Fatal("cannot parse 'delete' query")
-				}
-				if query.Table() != tableName {
-					t.Fatal("cannot parse 'delete' query")
-				}
-				deleteQuery := query.(*DeleteQuery)
-				if deleteQuery.ShardKeyID != 1 {
-					t.Fatal("cannot parse")
-				}
-				if deleteQuery.ShardKeyIDPlaceholderIndex != 0 {
-					t.Fatal("cannot parse")
-				}
-			})
-			t.Run("delete query with placeholder", func(t *testing.T) {
-				text := fmt.Sprintf("delete from %s where id = ?", tableName)
-				query, err := parser.Parse(text, int64(1))
-				checkErr(t, err)
-				if query.QueryType() != Delete {
-					t.Fatal("cannot parse 'delete' query")
-				}
-				if query.Table() != tableName {
-					t.Fatal("cannot parse 'delete' query")
-				}
-				deleteQuery := query.(*DeleteQuery)
-				if deleteQuery.ShardKeyID != 1 {
-					t.Fatal("cannot parse")
-				}
-				if deleteQuery.ShardKeyIDPlaceholderIndex != 1 {
-					t.Fatal("cannot parse")
-				}
-			})
-		})
-		t.Run("use shard_key table", func(t *testing.T) {
-			tableName := "user_items"
-			t.Run("simple delete query", func(t *testing.T) {
-				text := fmt.Sprintf("delete from %s where user_id = 1", tableName)
-				query, err := parser.Parse(text)
-				checkErr(t, err)
-				if query.QueryType() != Delete {
-					t.Fatal("cannot parse 'delete' query")
-				}
-				if query.Table() != tableName {
-					t.Fatal("cannot parse 'delete' query")
-				}
-				deleteQuery := query.(*DeleteQuery)
-				if deleteQuery.ShardKeyID != 1 {
-					t.Fatal("cannot parse")
-				}
-				if deleteQuery.ShardKeyIDPlaceholderIndex != 0 {
-					t.Fatal("cannot parse")
-				}
-			})
-			t.Run("delete query with placeholder", func(t *testing.T) {
-				text := fmt.Sprintf("delete from %s where user_id = ?", tableName)
-				query, err := parser.Parse(text, int64(1))
-				checkErr(t, err)
-				if query.QueryType() != Delete {
-					t.Fatal("cannot parse 'delete' query")
-				}
-				if query.Table() != tableName {
-					t.Fatal("cannot parse 'delete' query")
-				}
-				deleteQuery := query.(*DeleteQuery)
-				if deleteQuery.ShardKeyID != 1 {
-					t.Fatal("cannot parse")
-				}
-				if deleteQuery.ShardKeyIDPlaceholderIndex != 1 {
-					t.Fatal("cannot parse")
-				}
-			})
-		})
+		testDeleteWithShardingTable(t)
 	})
 }
 
