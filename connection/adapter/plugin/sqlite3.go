@@ -14,6 +14,7 @@ import (
 	"go.knocknote.io/octillery/internal"
 )
 
+// SQLiteAdapter implements DBAdapter interface.
 type SQLiteAdapter struct {
 }
 
@@ -34,28 +35,32 @@ func init() {
 	internal.SetLoadedPlugin(pluginName)
 }
 
+// CurrentSequenceID get current unique id for all shards by sequencer
 func (adapter *SQLiteAdapter) CurrentSequenceID(conn *sql.DB, tableName string) (int64, error) {
-	var seqId int64
+	var seqID int64
 	// ignore error of ErrNoRows
-	conn.QueryRow(fmt.Sprintf("select seq_id from %s where id = 0", tableName)).Scan(&seqId)
-	return seqId, nil
+	conn.QueryRow(fmt.Sprintf("select seq_id from %s where id = 0", tableName)).Scan(&seqID)
+	return seqID, nil
 }
 
+// NextSequenceID get next unique id for all shards by sequencer
 func (adapter *SQLiteAdapter) NextSequenceID(conn *sql.DB, tableName string) (int64, error) {
-	var seqId int64
+	var seqID int64
 	if _, err := conn.Exec(fmt.Sprintf("update %s set seq_id = seq_id + 1 where id = 0", tableName)); err != nil {
 		return 0, errors.Wrap(err, "cannot update seq_id")
 	}
-	if err := conn.QueryRow(fmt.Sprintf("select seq_id from %s where id = 0", tableName)).Scan(&seqId); err != nil {
+	if err := conn.QueryRow(fmt.Sprintf("select seq_id from %s where id = 0", tableName)).Scan(&seqID); err != nil {
 		return 0, errors.Wrap(err, "cannot select seq_id")
 	}
-	return seqId, nil
+	return seqID, nil
 }
 
+// ExecDDL do nothing
 func (adapter *SQLiteAdapter) ExecDDL(config *config.DatabaseConfig) error {
 	return nil
 }
 
+// OpenConnection open connection by database configuration file
 func (adapter *SQLiteAdapter) OpenConnection(config *config.DatabaseConfig, queryValues string) (*sql.DB, error) {
 	filePath := config.NameOrPath
 	debug.Printf("open connection %s", filePath)
@@ -63,11 +68,13 @@ func (adapter *SQLiteAdapter) OpenConnection(config *config.DatabaseConfig, quer
 	return conn, errors.Wrapf(err, "cannot open connection from %s", filePath)
 }
 
+// CreateSequencerTableIfNotExists create table for sequencer if not exists
 func (adapter *SQLiteAdapter) CreateSequencerTableIfNotExists(conn *sql.DB, tableName string) error {
 	_, err := conn.Exec(fmt.Sprintf("create table if not exists %s (id integer not null primary key autoincrement, seq_id integer not null)", tableName))
 	return errors.Wrap(err, "cannot create table for sequencer")
 }
 
+// InsertRowToSequencerIfNotExists insert first row to sequencer if not exists
 func (adapter *SQLiteAdapter) InsertRowToSequencerIfNotExists(conn *sql.DB, tableName string) error {
 	_, err := conn.Exec(fmt.Sprintf("insert into %s(id, seq_id) values (0, 1)", tableName))
 	return errors.Wrap(err, "cannot insert new row for sequncer")

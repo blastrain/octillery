@@ -15,6 +15,7 @@ import (
 	"go.knocknote.io/octillery/internal"
 )
 
+// MySQLAdapter implements DBAdapter interface.
 type MySQLAdapter struct {
 }
 
@@ -36,28 +37,31 @@ func init() {
 	internal.SetLoadedPlugin(pluginName)
 }
 
+// CurrentSequenceID get current unique id for all shards by sequencer
 func (adapter *MySQLAdapter) CurrentSequenceID(conn *sql.DB, tableName string) (int64, error) {
-	var seqId int64
+	var seqID int64
 	if _, err := conn.Exec(fmt.Sprintf("update %s set id = last_insert_id(id)", tableName)); err != nil {
 		return 0, errors.Wrap(err, "cannot update id by last_insert_id(id)")
 	}
-	if err := conn.QueryRow("select last_insert_id()").Scan(&seqId); err != nil {
+	if err := conn.QueryRow("select last_insert_id()").Scan(&seqID); err != nil {
 		return 0, errors.Wrap(err, "cannot select last_insert_id()")
 	}
-	return seqId, nil
+	return seqID, nil
 }
 
+// NextSequenceID get next unique id for all shards by sequencer
 func (adapter *MySQLAdapter) NextSequenceID(conn *sql.DB, tableName string) (int64, error) {
-	var seqId int64
+	var seqID int64
 	if _, err := conn.Exec(fmt.Sprintf("update %s set id = last_insert_id(id + 1)", tableName)); err != nil {
 		return 0, errors.Wrap(err, "cannot update id for last_insert_id(id + 1)")
 	}
-	if err := conn.QueryRow("select last_insert_id()").Scan(&seqId); err != nil {
+	if err := conn.QueryRow("select last_insert_id()").Scan(&seqID); err != nil {
 		return 0, errors.Wrap(err, "cannot select last_insert_id()")
 	}
-	return seqId, nil
+	return seqID, nil
 }
 
+// ExecDDL create database if not exists by database configuration file.
 func (adapter *MySQLAdapter) ExecDDL(config *config.DatabaseConfig) error {
 	if len(config.Masters) > 1 {
 		return errors.New("Sorry, currently supports single master database only")
@@ -78,6 +82,7 @@ func (adapter *MySQLAdapter) ExecDDL(config *config.DatabaseConfig) error {
 	return errors.New("must define 'master' server")
 }
 
+// OpenConnection open connection by database configuration file
 func (adapter *MySQLAdapter) OpenConnection(config *config.DatabaseConfig, queryString string) (*sql.DB, error) {
 	if len(config.Masters) > 1 {
 		return nil, errors.New("Sorry, currently supports single master database only")
@@ -105,6 +110,7 @@ func (adapter *MySQLAdapter) OpenConnection(config *config.DatabaseConfig, query
 	return nil, errors.New("must define 'master' server")
 }
 
+// CreateSequencerTableIfNotExists create table for sequencer if not exists
 func (adapter *MySQLAdapter) CreateSequencerTableIfNotExists(conn *sql.DB, tableName string) error {
 	_, err := conn.Exec(fmt.Sprintf(`
 CREATE TABLE IF NOT EXISTS %s (
@@ -113,6 +119,7 @@ CREATE TABLE IF NOT EXISTS %s (
 	return errors.Wrap(err, "cannot create table for sequencer")
 }
 
+// InsertRowToSequencerIfNotExists insert first row to sequencer if not exists
 func (adapter *MySQLAdapter) InsertRowToSequencerIfNotExists(conn *sql.DB, tableName string) error {
 	var rowCount uint64
 	if err := conn.QueryRow(fmt.Sprintf("SELECT COUNT(*) FROM %s", tableName)).Scan(&rowCount); err != nil {
