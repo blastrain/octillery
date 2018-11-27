@@ -498,7 +498,7 @@ func testTransactionWithNotShardingTable(t *testing.T, ctx context.Context, tx *
 		}
 		testTransactionStmtError(t, tx, stmt)
 		testTransactionQueryRowWithoutContext(t, stmt)
-		testTransactionQueryRowWithContext(t, stmt)
+		testTransactionQueryRowWithContext(t, ctx, stmt)
 	})
 	t.Run("exec", func(t *testing.T) {
 		stmt, err := tx.Prepare("update user_stages set name = 'bob' where id = ?")
