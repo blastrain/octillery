@@ -80,9 +80,9 @@ func (p *Parser) parseVal(val *vtparser.SQLVal, queryBase *QueryBase) error {
 	if len(queryBase.Args) >= placeholderIndex {
 		arg := queryBase.Args[placeholderIndex-1]
 		switch argType := arg.(type) {
-		case int, int8, int32, int64:
+		case int, int8, int16, int32, int64:
 			queryBase.ShardKeyID = Identifier(argType.(int64))
-		case uint, uint8, uint32, uint64:
+		case uint, uint8, uint16, uint32, uint64:
 			queryBase.ShardKeyID = Identifier(argType.(uint64))
 		default:
 			return errors.Errorf("unsupport shard_key type %s", reflect.TypeOf(arg))
