@@ -47,7 +47,7 @@ func NewPrinter(multiRows []*sql.Rows) (*Printer, error) {
 			allRows = append(allRows, &Row{values: values})
 		}
 	}
-	for columnIdx, _ := range columns {
+	for columnIdx := range columns {
 		maxLength := len(columns[columnIdx])
 		for _, row := range allRows {
 			if maxLength < len(row.values[columnIdx]) {
@@ -82,7 +82,7 @@ func (p *Printer) Print() {
 }
 
 func (p *Printer) printRowDelimiter() {
-	for idx, _ := range p.columns {
+	for idx := range p.columns {
 		fmt.Print("+")
 		fmt.Print(strings.Repeat("-", p.maxColumnLengths[idx]+2))
 	}
