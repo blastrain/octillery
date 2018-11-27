@@ -7,14 +7,17 @@ import (
 	"time"
 )
 
+// ValueConverter the compatible interface of ValueConverter in 'database/sql/driver' package.
 type ValueConverter interface {
 	ConvertValue(v interface{}) (Value, error)
 }
 
+// Valuer the compatible interface of Valuer in 'database/sql/driver' package.
 type Valuer interface {
 	Value() (Value, error)
 }
 
+// Bool the compatible value of Bool in 'database/sql/driver' package.
 var Bool boolType
 
 type boolType struct{}
@@ -115,6 +118,7 @@ type Null struct {
 	Converter ValueConverter
 }
 
+// ConvertValue the compatible method of ConvertValue in 'database/sql/driver' package.
 func (n Null) ConvertValue(v interface{}) (Value, error) {
 	if v == nil {
 		return nil, nil
@@ -128,6 +132,7 @@ type NotNull struct {
 	Converter ValueConverter
 }
 
+// ConvertValue the compatible method of ConvertValue in 'database/sql/driver' package.
 func (n NotNull) ConvertValue(v interface{}) (Value, error) {
 	if v == nil {
 		return nil, fmt.Errorf("nil value not allowed")
@@ -194,6 +199,7 @@ func callValuerValue(vr Valuer) (v Value, err error) {
 	return vr.Value()
 }
 
+// ConvertValue the compatible method of ConvertValue in 'database/sql/driver' package.
 func (defaultConverter) ConvertValue(v interface{}) (Value, error) {
 	if IsValue(v) {
 		return v, nil
@@ -216,9 +222,8 @@ func (defaultConverter) ConvertValue(v interface{}) (Value, error) {
 		// indirect pointers
 		if rv.IsNil() {
 			return nil, nil
-		} else {
-			return defaultConverter{}.ConvertValue(rv.Elem().Interface())
 		}
+		return defaultConverter{}.ConvertValue(rv.Elem().Interface())
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
 		return rv.Int(), nil
 	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32:
