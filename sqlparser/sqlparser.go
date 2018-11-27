@@ -12,6 +12,7 @@ import (
 	"go.knocknote.io/octillery/debug"
 )
 
+// Parser is the structure for parsing SQL
 type Parser struct {
 	cfg   *config.Config
 	query *Query
@@ -345,7 +346,7 @@ func (p *Parser) parseDeleteStmt(stmt *vtparser.Delete, queryBase *QueryBase) (Q
 			return nil, errors.WithStack(err)
 		}
 	}
-	query.SetStateAfterParsing()
+	query.setStateAfterParsing()
 	return query, nil
 }
 
@@ -383,6 +384,8 @@ func (p *Parser) formatQuery(query string) string {
 	return formattedQuery
 }
 
+// Parse parse SQL/DDL by [knocknote/vitess-sqlparser](https://github.com/knocknote/vitess-sqlparser),
+// it returns Query interface includes table name or query type
 func (p *Parser) Parse(queryText string, args ...interface{}) (Query, error) {
 	formattedQueryText := p.formatQuery(queryText)
 	ast, err := vtparser.Parse(formattedQueryText)
@@ -439,6 +442,8 @@ func (p *Parser) Parse(queryText string, args ...interface{}) (Query, error) {
 	return nil, errors.Errorf("unsupported query type %s", reflect.TypeOf(ast))
 }
 
+// New creates Parser instance.
+// If doesn't load configuration file before calling this, returns error.
 func New() (*Parser, error) {
 	cfg, err := config.Get()
 	if err != nil {
