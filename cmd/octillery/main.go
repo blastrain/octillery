@@ -193,6 +193,7 @@ func (c *CombinedQuery) allDDL() string {
 	return strings.Join(allDDL, ";\n")
 }
 
+// nolint: gocyclo
 func (cmd *MigrateCommand) Execute(args []string) error {
 	if len(args) == 0 {
 		return errors.New("argument is required. it is path to directory includes schema file or direct path to schema file")
@@ -412,6 +413,7 @@ const (
 	GoYearFormat
 )
 
+// nolint: gocyclo
 func (cmd *ImportCommand) convertMySQLTypeToGOType(typ string) GoType {
 	if charPattern.MatchString(typ) ||
 		enumPattern.MatchString(typ) ||
@@ -472,6 +474,7 @@ func (cmd *ImportCommand) timeValueWithFormat(format string, v string) (*time.Ti
 	return &value, nil
 }
 
+// nolint: gocyclo
 func (cmd *ImportCommand) values(record []string, types []GoType, columns []string, tableName string) ([]interface{}, error) {
 	values := []interface{}{}
 	for idx, v := range record {
@@ -533,6 +536,7 @@ func (cmd *ImportCommand) values(record []string, types []GoType, columns []stri
 	return values, nil
 }
 
+// nolint: gocyclo
 func (cmd *ImportCommand) Execute(args []string) error {
 	if len(args) == 0 {
 		return errors.New("argument is required. it is path to directory includes schema file or direct path to schema file")

@@ -386,6 +386,7 @@ func (p *Parser) formatQuery(query string) string {
 
 // Parse parse SQL/DDL by [knocknote/vitess-sqlparser](https://github.com/knocknote/vitess-sqlparser),
 // it returns Query interface includes table name or query type
+// nolint: gocyclo
 func (p *Parser) Parse(queryText string, args ...interface{}) (Query, error) {
 	formattedQueryText := p.formatQuery(queryText)
 	ast, err := vtparser.Parse(formattedQueryText)
