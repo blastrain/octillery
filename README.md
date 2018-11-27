@@ -1,4 +1,4 @@
-# Octillery [![CircleCI](https://circleci.com/gh/knocknote/octillery.svg?style=svg&circle-token=2012bcaaecf3d29133295ea4e53289ad52d9b3c2)](https://circleci.com/gh/knocknote/octillery)  [![codecov](https://codecov.io/gh/knocknote/octillery/branch/master/graph/badge.svg?token=hRKqugQMsg)](https://codecov.io/gh/knocknote/octillery)
+# Octillery [![GoDoc](https://godoc.org/go.knocknote.io/octillery?status.svg)](https://godoc.org/go.knocknote.io/octillery) [![CircleCI](https://circleci.com/gh/knocknote/octillery.svg?style=svg&circle-token=2012bcaaecf3d29133295ea4e53289ad52d9b3c2)](https://circleci.com/gh/knocknote/octillery)  [![codecov](https://codecov.io/gh/knocknote/octillery/branch/master/graph/badge.svg?token=hRKqugQMsg)](https://codecov.io/gh/knocknote/octillery)
 
 
 <img width="300px" height="238px" src="https://user-images.githubusercontent.com/209884/29391665-d1d6e1d0-8333-11e7-9a33-1db3dc9d2f72.png"></img>
