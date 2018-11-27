@@ -11,18 +11,19 @@ import (
 
 type mergedResult struct {
 	affectedRows   int64
-	lastInsertedId int64
+	lastInsertedID int64
 	err            error
 }
 
 func (r *mergedResult) LastInsertId() (int64, error) {
-	return r.lastInsertedId, r.err
+	return r.lastInsertedID, r.err
 }
 
 func (r *mergedResult) RowsAffected() (int64, error) {
 	return r.affectedRows, r.err
 }
 
+// QueryExecutor the interface for executing query to shards
 type QueryExecutor interface {
 	Query() ([]*sql.Rows, error)
 	QueryRow() (*sql.Row, error)
@@ -31,6 +32,7 @@ type QueryExecutor interface {
 	Exec() (sql.Result, error)
 }
 
+// QueryExecutorBase a implementation of QueryExecutor interface.
 type QueryExecutorBase struct {
 	ctx   context.Context
 	tx    *connection.TxConnection
@@ -38,10 +40,14 @@ type QueryExecutorBase struct {
 	query sqlparser.Query
 }
 
+// Prepare executes prepare for shards.
+// Currently, this is not supported.
 func (e *QueryExecutorBase) Prepare() (*sql.Stmt, error) {
 	return nil, errors.New("currently not supported Prepare() for sharding table")
 }
 
+// Stmt executes stmt for shards.
+// Currently, this is not supported.
 func (e *QueryExecutorBase) Stmt() (*sql.Stmt, error) {
 	return nil, errors.New("currently not supported Stmt() for sharding table")
 }
@@ -87,6 +93,8 @@ func (e *QueryExecutorBase) execQueryRow(conn *sql.DB, query string, args ...int
 	return conn.QueryRowContext(e.ctx, query, args...), nil
 }
 
+// NewQueryExecutor creates instance of QueryExecutor interface.
+// If specify unknown query type, returns nil
 func NewQueryExecutor(ctx context.Context, conn *connection.DBConnection, tx *connection.TxConnection, query sqlparser.Query) QueryExecutor {
 	base := &QueryExecutorBase{
 		ctx:   ctx,

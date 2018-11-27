@@ -4,37 +4,37 @@ import (
 	vtparser "github.com/knocknote/vitess-sqlparser/sqlparser"
 )
 
-// Identifier is the type for sharding key
+// Identifier the type for sharding key
 type Identifier int64
 
 const (
-	// UnknownID is the identifier of default sharding key
+	// UnknownID the identifier of default sharding key
 	UnknownID Identifier = -1
 )
 
-// QueryType is the type of SQL/DDL ( Select, Insert, Update, Delet, ...)
+// QueryType the type of SQL/DDL ( Select, Insert, Update, Delet, ...)
 type QueryType int
 
 const (
-	// Unknown is the undefined query type
+	// Unknown undefined query type
 	Unknown QueryType = iota
-	// Select is the 'SELECT' query type
+	// Select 'SELECT' query type
 	Select
-	// Insert is the 'INSERT' query type
+	// Insert 'INSERT' query type
 	Insert
-	// Update is the 'UPDATE' query type
+	// Update 'UPDATE' query type
 	Update
-	// Delete is the 'DELETE' query type
+	// Delete 'DELETE' query type
 	Delete
-	// Drop is the 'DROP' query type
+	// Drop 'DROP' query type
 	Drop
-	// CreateTable is the 'CREATE TABLE' query type
+	// CreateTable 'CREATE TABLE' query type
 	CreateTable
-	// TruncateTable is the 'TRUNCATE TABLE' query type
+	// TruncateTable 'TRUNCATE TABLE' query type
 	TruncateTable
 )
 
-// Query is the interface that must be implemented by each query.
+// Query the interface that must be implemented by each query.
 type Query interface {
 	// Table returns a table name
 	Table() string
@@ -53,7 +53,7 @@ func NewQueryBase(stmt vtparser.Statement, query string, args []interface{}) *Qu
 	}
 }
 
-// QueryBase is the implementation of Query interface.
+// QueryBase a implementation of Query interface.
 type QueryBase struct {
 	Text                       string
 	Args                       []interface{}
@@ -79,7 +79,7 @@ func (q *QueryBase) IsNotFoundShardKeyID() bool {
 	return q.ShardKeyID == UnknownID
 }
 
-// InsertQuery is the implementation of Query interface.
+// InsertQuery a implementation of Query interface.
 type InsertQuery struct {
 	*QueryBase
 	Stmt           *vtparser.Insert
@@ -120,7 +120,7 @@ func (q *InsertQuery) String() string {
 	return vtparser.String(q.Stmt)
 }
 
-// DeleteQuery is the implementation of Query interface.
+// DeleteQuery a implementation of Query interface.
 type DeleteQuery struct {
 	*QueryBase
 	Stmt            *vtparser.Delete

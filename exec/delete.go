@@ -9,18 +9,22 @@ import (
 	"go.knocknote.io/octillery/sqlparser"
 )
 
+// DeleteQueryExecutor inherits QueryExecutorBase structure
 type DeleteQueryExecutor struct {
 	*QueryExecutorBase
 }
 
+// NewDeleteQueryExecutor creates instance of DeleteQueryExecutor
 func NewDeleteQueryExecutor(base *QueryExecutorBase) *DeleteQueryExecutor {
 	return &DeleteQueryExecutor{base}
 }
 
+// Query doesn't support in DeleteQueryExecutor, returns always error.
 func (e *DeleteQueryExecutor) Query() ([]*sql.Rows, error) {
 	return nil, errors.New("DeleteQueryExecutor cannot invoke Query()")
 }
 
+// QueryRow doesn't support in DeleteQueryExecutor, returns always error.
 func (e *DeleteQueryExecutor) QueryRow() (*sql.Row, error) {
 	return nil, errors.New("DeleteQueryExecutor cannot invoke QueryRow()")
 }
@@ -61,6 +65,7 @@ func (e *DeleteQueryExecutor) deleteForAllShard(query *sqlparser.DeleteQuery) (s
 	return nil, errors.New("still not support to delete for all shards")
 }
 
+// Exec executes DELETE query for shards.
 func (e *DeleteQueryExecutor) Exec() (sql.Result, error) {
 	query, ok := e.query.(*sqlparser.DeleteQuery)
 	if !ok {

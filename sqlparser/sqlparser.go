@@ -12,7 +12,7 @@ import (
 	"go.knocknote.io/octillery/debug"
 )
 
-// Parser is the structure for parsing SQL
+// Parser the structure for parsing SQL
 type Parser struct {
 	cfg   *config.Config
 	query *Query

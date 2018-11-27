@@ -8,22 +8,27 @@ import (
 	"go.knocknote.io/octillery/sqlparser"
 )
 
+// UpdateQueryExecutor inherits QueryExecutorBase structure
 type UpdateQueryExecutor struct {
 	*QueryExecutorBase
 }
 
+// NewUpdateQueryExecutor creates instance of UpdateQueryExecutor
 func NewUpdateQueryExecutor(base *QueryExecutorBase) *UpdateQueryExecutor {
 	return &UpdateQueryExecutor{base}
 }
 
+// Query doesn't support in UpdateQueryExecutor, returns always error.
 func (e *UpdateQueryExecutor) Query() ([]*sql.Rows, error) {
 	return nil, errors.New("UpdateQueryExecutor cannot invoke Query()")
 }
 
+// QueryRow doesn't support in UpdateQueryExecutor, returns always error.
 func (e *UpdateQueryExecutor) QueryRow() (*sql.Row, error) {
 	return nil, errors.New("UpdateQueryExecutor cannot invoke QueryRow()")
 }
 
+// Exec executes UPDATE query for shards.
 func (e *UpdateQueryExecutor) Exec() (sql.Result, error) {
 	query, ok := e.query.(*sqlparser.QueryBase)
 	if !ok {

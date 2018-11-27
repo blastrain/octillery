@@ -8,18 +8,22 @@ import (
 	"go.knocknote.io/octillery/sqlparser"
 )
 
+// InsertQueryExecutor inherits QueryExecutorBase structure
 type InsertQueryExecutor struct {
 	*QueryExecutorBase
 }
 
+// NewInsertQueryExecutor creates instance of InsertQueryExecutor
 func NewInsertQueryExecutor(base *QueryExecutorBase) *InsertQueryExecutor {
 	return &InsertQueryExecutor{base}
 }
 
+// Query doesn't support in InsertQueryExecutor, returns always error.
 func (e *InsertQueryExecutor) Query() ([]*sql.Rows, error) {
 	return nil, errors.New("InsertQueryExecutor cannot invoke Query()")
 }
 
+// QueryRow doesn't support in InsertQueryExecutor, returns always error.
 func (e *InsertQueryExecutor) QueryRow() (*sql.Row, error) {
 	return nil, errors.New("InsertQueryExecutor cannot invoke QueryRow()")
 }
@@ -36,6 +40,7 @@ func (e *InsertQueryExecutor) nextSequenceID(query *sqlparser.InsertQuery) (int6
 	return nextSequenceID, nil
 }
 
+// Exec executes INSERT query for shards.
 func (e *InsertQueryExecutor) Exec() (sql.Result, error) {
 	query, ok := e.query.(*sqlparser.InsertQuery)
 	if !ok {
@@ -54,14 +59,14 @@ func (e *InsertQueryExecutor) Exec() (sql.Result, error) {
 		return nil, errors.WithStack(err)
 	}
 	query.SetNextSequenceID(nextSequenceID)
-	shardKeyId := query.ShardKeyID
+	shardKeyID := query.ShardKeyID
 	if e.conn.IsEqualShardColumnToShardKeyColumn() {
-		shardKeyId = sqlparser.Identifier(nextSequenceID)
+		shardKeyID = sqlparser.Identifier(nextSequenceID)
 	}
-	if shardKeyId == sqlparser.UnknownID {
+	if shardKeyID == sqlparser.UnknownID {
 		return nil, errors.New("shard_key id is not found")
 	}
-	shardConn, err := e.conn.ShardConnectionByID(int64(shardKeyId))
+	shardConn, err := e.conn.ShardConnectionByID(int64(shardKeyID))
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
@@ -71,7 +76,7 @@ func (e *InsertQueryExecutor) Exec() (sql.Result, error) {
 		return nil, errors.WithStack(err)
 	}
 	if e.conn.IsUsedSequencer {
-		return &mergedResult{affectedRows: 1, lastInsertedId: nextSequenceID}, nil
+		return &mergedResult{affectedRows: 1, lastInsertedID: nextSequenceID}, nil
 	}
 	return result.(sql.Result), nil
 }
