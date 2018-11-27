@@ -19,12 +19,12 @@ type hashMapCluster struct {
 	conn      *sql.DB
 }
 
-type HashMapShardingAlgorithm struct {
+type hashMapShardingAlgorithm struct {
 	hashSlotSize uint32
 	clusters     []*hashMapCluster
 }
 
-func (h *HashMapShardingAlgorithm) addCluster(startSlot uint32, endSlot uint32, conn *sql.DB) {
+func (h *hashMapShardingAlgorithm) addCluster(startSlot uint32, endSlot uint32, conn *sql.DB) {
 	if h.clusters == nil {
 		h.clusters = make([]*hashMapCluster, 0)
 	}
@@ -35,7 +35,7 @@ func (h *HashMapShardingAlgorithm) addCluster(startSlot uint32, endSlot uint32, 
 	})
 }
 
-func (h *HashMapShardingAlgorithm) hashSlotToClusterIndex(hashSlot uint32) (int, error) {
+func (h *hashMapShardingAlgorithm) hashSlotToClusterIndex(hashSlot uint32) (int, error) {
 	for idx, cluster := range h.clusters {
 		if cluster.startSlot <= hashSlot && hashSlot <= cluster.endSlot {
 			return idx, nil
@@ -44,7 +44,7 @@ func (h *HashMapShardingAlgorithm) hashSlotToClusterIndex(hashSlot uint32) (int,
 	return -1, errors.Errorf("unknown hashSlot %d", hashSlot)
 }
 
-func (h *HashMapShardingAlgorithm) Init(conns []*sql.DB) bool {
+func (h *hashMapShardingAlgorithm) Init(conns []*sql.DB) bool {
 	if len(conns) < 2 {
 		return false
 	}
@@ -64,19 +64,19 @@ func (h *HashMapShardingAlgorithm) Init(conns []*sql.DB) bool {
 	return true
 }
 
-func (h *HashMapShardingAlgorithm) Shard(conns []*sql.DB, shardId int64) (*sql.DB, error) {
-	hash := crc32.ChecksumIEEE([]byte(fmt.Sprintf("%d", shardId)))
+func (h *hashMapShardingAlgorithm) Shard(conns []*sql.DB, shardID int64) (*sql.DB, error) {
+	hash := crc32.ChecksumIEEE([]byte(fmt.Sprintf("%d", shardID)))
 	hashSlot := hash % h.hashSlotSize
 	clusterIndex, err := h.hashSlotToClusterIndex(hashSlot)
-	debug.Printf("shardId = %d hash = %d hashSlot = %d clusterIndex = %d", shardId, hash, hashSlot, clusterIndex)
+	debug.Printf("shardId = %d hash = %d hashSlot = %d clusterIndex = %d", shardID, hash, hashSlot, clusterIndex)
 	if err != nil {
-		return nil, errors.Wrapf(err, "cannot get clusterIndex from hashSlot %d. shardId = %d, hash = %d", hashSlot, shardId, hash)
+		return nil, errors.Wrapf(err, "cannot get clusterIndex from hashSlot %d. shardId = %d, hash = %d", hashSlot, shardID, hash)
 	}
 	return h.clusters[clusterIndex].conn, nil
 }
 
 func init() {
 	Register("hashmap", func() ShardingAlgorithm {
-		return &HashMapShardingAlgorithm{}
+		return &hashMapShardingAlgorithm{}
 	})
 }

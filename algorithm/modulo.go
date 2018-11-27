@@ -6,24 +6,24 @@ import (
 	"go.knocknote.io/octillery/debug"
 )
 
-type ModuloShardingAlgorithm struct {
+type moduloShardingAlgorithm struct {
 }
 
-func (m *ModuloShardingAlgorithm) Init(conns []*sql.DB) bool {
+func (m *moduloShardingAlgorithm) Init(conns []*sql.DB) bool {
 	return true
 }
 
-func (m *ModuloShardingAlgorithm) Shard(conns []*sql.DB, shardId int64) (*sql.DB, error) {
-	shardIndex := shardId % int64(len(conns))
-	debug.Printf("shardIndex = %d. (shardId = %d, len(conns) = %d)", shardIndex, shardId, len(conns))
+func (m *moduloShardingAlgorithm) Shard(conns []*sql.DB, shardID int64) (*sql.DB, error) {
+	shardIndex := shardID % int64(len(conns))
+	debug.Printf("shardIndex = %d. (shardId = %d, len(conns) = %d)", shardIndex, shardID, len(conns))
 	return conns[int(shardIndex)], nil
 }
 
 func init() {
 	Register("", func() ShardingAlgorithm {
-		return &ModuloShardingAlgorithm{}
+		return &moduloShardingAlgorithm{}
 	})
 	Register("modulo", func() ShardingAlgorithm {
-		return &ModuloShardingAlgorithm{}
+		return &moduloShardingAlgorithm{}
 	})
 }
