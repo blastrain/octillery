@@ -51,6 +51,7 @@ func TestError(t *testing.T) {
 	}
 }
 
+// nolint: gocyclo
 func TestConfig(t *testing.T) {
 	confPath := filepath.Join(path.ThisDirPath(), "..", "test_databases.yml")
 	t.Run("load", func(t *testing.T) {

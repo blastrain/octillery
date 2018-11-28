@@ -8,16 +8,19 @@ import (
 	"github.com/pkg/errors"
 )
 
+// Row store found records
 type Row struct {
 	values []string
 }
 
+// Printer print to console (format is like MySQL client)
 type Printer struct {
 	columns          []string
 	maxColumnLengths []int
 	allRows          []*Row
 }
 
+// NewPrinter creates instance of Printer
 func NewPrinter(multiRows []*sql.Rows) (*Printer, error) {
 	var columns []string
 	var maxColumnLengths []int
@@ -31,7 +34,7 @@ func NewPrinter(multiRows []*sql.Rows) (*Printer, error) {
 			}
 		}
 		var fetchedColumns []interface{}
-		for i := 0; i < len(columns); i += 1 {
+		for i := 0; i < len(columns); i++ {
 			str := ""
 			fetchedColumns = append(fetchedColumns, &str)
 		}
@@ -63,6 +66,7 @@ func NewPrinter(multiRows []*sql.Rows) (*Printer, error) {
 	}, nil
 }
 
+// Print print to console found rows
 func (p *Printer) Print() {
 	p.printRowDelimiter()
 	for idx, column := range p.columns {

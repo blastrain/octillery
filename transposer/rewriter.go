@@ -11,43 +11,43 @@ import (
 	"github.com/sergi/go-diff/diffmatchpatch"
 )
 
-type RewriterContext struct {
+type rewriterContext struct {
 	FilePath       string
 	Diffs          []diffmatchpatch.Diff
 	CurrentDiffIdx int
 }
 
-func (ctx *RewriterContext) nextDiff() *diffmatchpatch.Diff {
+func (ctx *rewriterContext) nextDiff() *diffmatchpatch.Diff {
 	if ctx.CurrentDiffIdx+1 < len(ctx.Diffs) {
 		return &ctx.Diffs[ctx.CurrentDiffIdx+1]
 	}
 	return nil
 }
 
-func (ctx *RewriterContext) currentDiff() *diffmatchpatch.Diff {
+func (ctx *rewriterContext) currentDiff() *diffmatchpatch.Diff {
 	return &ctx.Diffs[ctx.CurrentDiffIdx]
 }
 
-func (ctx *RewriterContext) previousDiff() *diffmatchpatch.Diff {
+func (ctx *rewriterContext) previousDiff() *diffmatchpatch.Diff {
 	if ctx.CurrentDiffIdx > 0 {
 		return &ctx.Diffs[ctx.CurrentDiffIdx-1]
 	}
 	return nil
 }
 
-func (ctx *RewriterContext) previousDiffText() string {
+func (ctx *rewriterContext) previousDiffText() string {
 	return ctx.previousDiff().Text
 }
 
-func (ctx *RewriterContext) currentDiffText() string {
+func (ctx *rewriterContext) currentDiffText() string {
 	return ctx.currentDiff().Text
 }
 
-func (ctx *RewriterContext) nextDiffText() string {
+func (ctx *rewriterContext) nextDiffText() string {
 	return ctx.nextDiff().Text
 }
 
-func (ctx *RewriterContext) isPreviousDiffTypeEqual() bool {
+func (ctx *rewriterContext) isPreviousDiffTypeEqual() bool {
 	diff := ctx.previousDiff()
 	if diff != nil && diff.Type == diffmatchpatch.DiffEqual {
 		return true
@@ -55,7 +55,7 @@ func (ctx *RewriterContext) isPreviousDiffTypeEqual() bool {
 	return false
 }
 
-func (ctx *RewriterContext) isCurrentDiffTypeEqual() bool {
+func (ctx *rewriterContext) isCurrentDiffTypeEqual() bool {
 	diff := ctx.currentDiff()
 	if diff != nil && diff.Type == diffmatchpatch.DiffEqual {
 		return true
@@ -63,7 +63,7 @@ func (ctx *RewriterContext) isCurrentDiffTypeEqual() bool {
 	return false
 }
 
-func (ctx *RewriterContext) isNextDiffTypeEqual() bool {
+func (ctx *rewriterContext) isNextDiffTypeEqual() bool {
 	diff := ctx.nextDiff()
 	if diff != nil && diff.Type == diffmatchpatch.DiffEqual {
 		return true
@@ -71,7 +71,7 @@ func (ctx *RewriterContext) isNextDiffTypeEqual() bool {
 	return false
 }
 
-func (ctx *RewriterContext) beforeAroundLines() []string {
+func (ctx *rewriterContext) beforeAroundLines() []string {
 	if !ctx.isPreviousDiffTypeEqual() {
 		return []string{}
 	}
@@ -88,7 +88,7 @@ func (ctx *RewriterContext) beforeAroundLines() []string {
 	return []string{}
 }
 
-func (ctx *RewriterContext) afterAroundLines() []string {
+func (ctx *rewriterContext) afterAroundLines() []string {
 	if !ctx.isNextDiffTypeEqual() {
 		return []string{}
 	}
@@ -105,7 +105,7 @@ func (ctx *RewriterContext) afterAroundLines() []string {
 	return []string{}
 }
 
-func (ctx *RewriterContext) splitCurrentDiffLines() []string {
+func (ctx *rewriterContext) splitCurrentDiffLines() []string {
 	lines := strings.Split(ctx.currentDiffText(), "\n")
 	if len(lines) > 1 {
 		return lines[0 : len(lines)-1]
@@ -113,8 +113,9 @@ func (ctx *RewriterContext) splitCurrentDiffLines() []string {
 	return lines
 }
 
+// Rewriter replace import statement and save it
 type Rewriter struct {
-	Ctx *RewriterContext
+	ctx *rewriterContext
 }
 
 func (*Rewriter) getDiff(fileData string, newFileData string) []diffmatchpatch.Diff {
@@ -130,7 +131,7 @@ func (*Rewriter) printFilePath(filePath string) {
 }
 
 func (r *Rewriter) splitCurrentDiffLines() []string {
-	lines := strings.Split(r.Ctx.currentDiffText(), "\n")
+	lines := strings.Split(r.ctx.currentDiffText(), "\n")
 	if len(lines) > 1 {
 		return lines[0 : len(lines)-1]
 	}
@@ -157,7 +158,7 @@ func (*Rewriter) diffPrefix(diff *diffmatchpatch.Diff) string {
 
 func (r *Rewriter) printDiffForCurrentLine() {
 
-	ctx := r.Ctx
+	ctx := r.ctx
 	if ctx.isCurrentDiffTypeEqual() {
 		return
 	}
@@ -181,10 +182,10 @@ func (r *Rewriter) printDiffForCurrentLine() {
 func (r *Rewriter) printAllDiff(fileData string, newFileData string, filePath string) {
 	diffs := r.getDiff(fileData, newFileData)
 	r.printFilePath(filePath)
-	r.Ctx.FilePath = filePath
-	r.Ctx.Diffs = diffs
+	r.ctx.FilePath = filePath
+	r.ctx.Diffs = diffs
 	for idx := range diffs {
-		r.Ctx.CurrentDiffIdx = idx
+		r.ctx.CurrentDiffIdx = idx
 		r.printDiffForCurrentLine()
 	}
 	fmt.Println("")
@@ -232,12 +233,14 @@ func (r *Rewriter) rewriteFile(inspectResult *InspectResult, isDryRun bool, tran
 	return nil
 }
 
+// NewRewriter creates instance of Rewriter.
 func NewRewriter() *Rewriter {
 	return &Rewriter{
-		Ctx: &RewriterContext{},
+		ctx: &rewriterContext{},
 	}
 }
 
+// Rewrite overwrite import statement.
 func (r *Rewriter) Rewrite(inspectResults []*InspectResult, isDryRun bool, transposeFunc func(packageName string) string) error {
 	for _, inspectResult := range inspectResults {
 		if err := r.rewriteFile(inspectResult, isDryRun, transposeFunc); err != nil {

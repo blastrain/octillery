@@ -10,11 +10,13 @@ import (
 	"github.com/pkg/errors"
 )
 
+// InspectResult has slice of InspectImportedResult
 type InspectResult struct {
 	Path            string
 	ImportedResults []InspectImportedResult
 }
 
+// InspectImportedResult has information of import statement
 type InspectImportedResult struct {
 	Path             string
 	PackageName      string
@@ -23,15 +25,16 @@ type InspectImportedResult struct {
 	End              token.Pos
 }
 
+// Inspector inspects import statement
 type Inspector struct {
 	ignorePaths []*regexp.Regexp
 }
 
 var (
-	GitDirPattern                 = regexp.MustCompile("^.git")
-	GoTestSourcePattern           = regexp.MustCompile("_test.go$")
-	GoSourcePattern               = regexp.MustCompile("\\.go$")
-	OctilleryIgnoreSourcePatterns = importDatabaseSQLPackagePatterns()
+	gitDirPattern                 = regexp.MustCompile("^.git")
+	goTestSourcePattern           = regexp.MustCompile("_test.go$")
+	goSourcePattern               = regexp.MustCompile("\\.go$")
+	octilleryIgnoreSourcePatterns = importDatabaseSQLPackagePatterns()
 )
 
 func importDatabaseSQLPackagePatterns() []*regexp.Regexp {
@@ -53,16 +56,16 @@ func importDatabaseSQLPackagePatterns() []*regexp.Regexp {
 }
 
 func (*Inspector) isInspectTargetGoSource(path string) bool {
-	if GitDirPattern.MatchString(path) {
+	if gitDirPattern.MatchString(path) {
 		return false
 	}
-	if GoTestSourcePattern.MatchString(path) {
+	if goTestSourcePattern.MatchString(path) {
 		return false
 	}
-	if !GoSourcePattern.MatchString(path) {
+	if !goSourcePattern.MatchString(path) {
 		return false
 	}
-	for _, pattern := range OctilleryIgnoreSourcePatterns {
+	for _, pattern := range octilleryIgnoreSourcePatterns {
 		if pattern.MatchString(path) {
 			return false
 		}
@@ -107,6 +110,7 @@ func (i *Inspector) inspectForPath(matchPattern *regexp.Regexp, path string) *In
 	return nil
 }
 
+// NewInspector creates instance of Inspector
 func NewInspector() *Inspector {
 	return &Inspector{
 		ignorePaths: []*regexp.Regexp{},
@@ -136,6 +140,7 @@ func (i *Inspector) setupIgnorePaths(paths []string) error {
 	return nil
 }
 
+// Inspect inspect import statement of go file under the specified path.
 func (i *Inspector) Inspect(matchPattern *regexp.Regexp, searchRoot string, ignorePaths []string) ([]*InspectResult, error) {
 	if err := i.setupIgnorePaths(ignorePaths); err != nil {
 		return nil, errors.WithStack(err)

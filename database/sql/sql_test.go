@@ -204,6 +204,160 @@ func TestRegister(t *testing.T) {
 	Register("sqlite3", &TestDriver{})
 }
 
+func testColumnType(t *testing.T, rows *Rows) {
+	t.Run("validate column type", func(t *testing.T) {
+		types, err := rows.ColumnTypes()
+		checkErr(t, err)
+		if len(types) != 4 {
+			t.Fatal("cannot get columnTypes")
+		}
+		columnType := types[0]
+		if columnType.Name() != "name" {
+			t.Fatal("cannot work ColumnType.Name")
+		}
+		if _, ok := columnType.Length(); ok {
+			t.Fatal("cannot work ColumnType.Length")
+		}
+		if _, _, ok := columnType.DecimalSize(); ok {
+			t.Fatal("cannot work ColumnType.DecimalSize")
+		}
+		if columnType.ScanType().Kind() != reflect.Interface {
+			t.Fatal("cannot work ColumnType.ScanType")
+		}
+		if _, ok := columnType.Nullable(); ok {
+			t.Fatal("cannot work ColumnType.Nullable")
+		}
+		if name := columnType.DatabaseTypeName(); name != "" {
+			t.Fatal("cannot work ColumnType.DatabaseTypeName")
+		}
+	})
+}
+
+func testRows(t *testing.T, rows *Rows) {
+	for {
+		for rows.Next() {
+			var (
+				name  string
+				age   int
+				isGod bool
+				point float32
+			)
+			checkErr(t, rows.Scan(&name, &age, &isGod, &point))
+			if name != "alice" {
+				t.Fatal("cannot scan")
+			}
+			if age != 10 {
+				t.Fatal("cannot scan")
+			}
+			if !isGod {
+				t.Fatal("cannot scan")
+			}
+			if int(point) != 3 {
+				t.Fatal("cannot scan")
+			}
+		}
+		if !rows.NextResultSet() {
+			break
+		}
+	}
+}
+
+func testPrepareWithNotShardingTable(t *testing.T, ctx context.Context, db *DB) {
+	stmt, err := db.PrepareContext(ctx, "select name from user_stages where id = ?")
+	checkErr(t, err)
+	defer stmt.Close()
+	t.Run("query", func(t *testing.T) {
+		rows, err := stmt.Query(1)
+		checkErr(t, err)
+		defer rows.Close()
+		t.Run("validate columns", func(t *testing.T) {
+			columns, err := rows.Columns()
+			checkErr(t, err)
+			if len(columns) != 4 {
+				t.Fatal("cannot get columns")
+			}
+			testColumnType(t, rows)
+		})
+		checkErr(t, rows.Err())
+		testRows(t, rows)
+	})
+	t.Run("query context", func(t *testing.T) {
+		rows, err := stmt.QueryContext(ctx, 1)
+		checkErr(t, err)
+		defer rows.Close()
+		for rows.Next() {
+			var (
+				name  string
+				age   int
+				isGod bool
+				point float32
+			)
+			checkErr(t, rows.Scan(&name, &age, &isGod, &point))
+			if name != "alice" {
+				t.Fatal("cannot scan")
+			}
+		}
+		checkErr(t, rows.Err())
+	})
+}
+
+func testPrepareContextWithNotShardingTable(t *testing.T, ctx context.Context, db *DB) {
+	t.Run("query", func(t *testing.T) {
+		stmt, err := db.Prepare("select * from user_stages where id = ?")
+		checkErr(t, err)
+		defer stmt.Close()
+		t.Run("query row without context", func(t *testing.T) {
+			var (
+				name  string
+				age   int
+				isGod bool
+				point float32
+			)
+			stmt.QueryRow(1).Scan(&name, &age, &isGod, &point)
+			if name != "alice" {
+				t.Fatal("cannot scan")
+			}
+		})
+		t.Run("query row with context", func(t *testing.T) {
+			var (
+				name  string
+				age   int
+				isGod bool
+				point float32
+			)
+			stmt.QueryRowContext(ctx, 1).Scan(&name, &age, &isGod, &point)
+			if name != "alice" {
+				t.Fatal("cannot scan")
+			}
+		})
+	})
+	t.Run("exec", func(t *testing.T) {
+		stmt, err := db.Prepare("update user_stages set name = 'bob' where id = ?")
+		checkErr(t, err)
+		defer stmt.Close()
+		t.Run("exec without context", func(t *testing.T) {
+			result, err := stmt.Exec(1)
+			checkErr(t, err)
+			if _, err := result.LastInsertId(); err != nil {
+				t.Fatalf("%+v\n", err)
+			}
+			if _, err := result.RowsAffected(); err != nil {
+				t.Fatalf("%+v\n", err)
+			}
+		})
+		t.Run("exec with context", func(t *testing.T) {
+			result, err := stmt.ExecContext(ctx, 1)
+			checkErr(t, err)
+			if _, err := result.LastInsertId(); err != nil {
+				t.Fatalf("%+v\n", err)
+			}
+			if _, err := result.RowsAffected(); err != nil {
+				t.Fatalf("%+v\n", err)
+			}
+		})
+	})
+}
+
 func TestDB(t *testing.T) {
 	db, err := Open("sqlite3", "?parseTime=true&loc=Asia%2FTokyo")
 	checkErr(t, err)
@@ -223,150 +377,12 @@ func TestDB(t *testing.T) {
 	checkErr(t, db.Ping())
 	t.Run("prepare context", func(t *testing.T) {
 		t.Run("not sharding table", func(t *testing.T) {
-			stmt, err := db.PrepareContext(ctx, "select name from user_stages where id = ?")
-			checkErr(t, err)
-			defer stmt.Close()
-			t.Run("query", func(t *testing.T) {
-				rows, err := stmt.Query(1)
-				checkErr(t, err)
-				defer rows.Close()
-				t.Run("validate columns", func(t *testing.T) {
-					columns, err := rows.Columns()
-					checkErr(t, err)
-					if len(columns) != 4 {
-						t.Fatal("cannot get columns")
-					}
-				})
-				t.Run("validate column type", func(t *testing.T) {
-					types, err := rows.ColumnTypes()
-					checkErr(t, err)
-					if len(types) != 4 {
-						t.Fatal("cannot get columnTypes")
-					}
-					columnType := types[0]
-					if columnType.Name() != "name" {
-						t.Fatal("cannot work ColumnType.Name")
-					}
-					if _, ok := columnType.Length(); ok {
-						t.Fatal("cannot work ColumnType.Length")
-					}
-					if _, _, ok := columnType.DecimalSize(); ok {
-						t.Fatal("cannot work ColumnType.DecimalSize")
-					}
-					if columnType.ScanType().Kind() != reflect.Interface {
-						t.Fatal("cannot work ColumnType.ScanType")
-					}
-					if _, ok := columnType.Nullable(); ok {
-						t.Fatal("cannot work ColumnType.Nullable")
-					}
-					if name := columnType.DatabaseTypeName(); name != "" {
-						t.Fatal("cannot work ColumnType.DatabaseTypeName")
-					}
-				})
-				for {
-					for rows.Next() {
-						var (
-							name  string
-							age   int
-							isGod bool
-							point float32
-						)
-						checkErr(t, rows.Scan(&name, &age, &isGod, &point))
-						if name != "alice" {
-							t.Fatal("cannot scan")
-						}
-						if age != 10 {
-							t.Fatal("cannot scan")
-						}
-						if !isGod {
-							t.Fatal("cannot scan")
-						}
-						if int(point) != 3 {
-							t.Fatal("cannot scan")
-						}
-					}
-					if !rows.NextResultSet() {
-						break
-					}
-				}
-				checkErr(t, rows.Err())
-			})
-			t.Run("query context", func(t *testing.T) {
-				rows, err := stmt.QueryContext(ctx, 1)
-				checkErr(t, err)
-				defer rows.Close()
-				for rows.Next() {
-					var (
-						name  string
-						age   int
-						isGod bool
-						point float32
-					)
-					checkErr(t, rows.Scan(&name, &age, &isGod, &point))
-					if name != "alice" {
-						t.Fatal("cannot scan")
-					}
-				}
-				checkErr(t, rows.Err())
-			})
+			testPrepareWithNotShardingTable(t, ctx, db)
 		})
 	})
 	t.Run("prepare", func(t *testing.T) {
 		t.Run("not sharding table", func(t *testing.T) {
-			t.Run("query", func(t *testing.T) {
-				stmt, err := db.Prepare("select * from user_stages where id = ?")
-				checkErr(t, err)
-				defer stmt.Close()
-				t.Run("query row without context", func(t *testing.T) {
-					var (
-						name  string
-						age   int
-						isGod bool
-						point float32
-					)
-					stmt.QueryRow(1).Scan(&name, &age, &isGod, &point)
-					if name != "alice" {
-						t.Fatal("cannot scan")
-					}
-				})
-				t.Run("query row with context", func(t *testing.T) {
-					var (
-						name  string
-						age   int
-						isGod bool
-						point float32
-					)
-					stmt.QueryRowContext(ctx, 1).Scan(&name, &age, &isGod, &point)
-					if name != "alice" {
-						t.Fatal("cannot scan")
-					}
-				})
-			})
-			t.Run("exec", func(t *testing.T) {
-				stmt, err := db.Prepare("update user_stages set name = 'bob' where id = ?")
-				checkErr(t, err)
-				defer stmt.Close()
-				t.Run("exec without context", func(t *testing.T) {
-					result, err := stmt.Exec(1)
-					checkErr(t, err)
-					if _, err := result.LastInsertId(); err != nil {
-						t.Fatalf("%+v\n", err)
-					}
-					if _, err := result.RowsAffected(); err != nil {
-						t.Fatalf("%+v\n", err)
-					}
-				})
-				t.Run("exec with context", func(t *testing.T) {
-					result, err := stmt.ExecContext(ctx, 1)
-					checkErr(t, err)
-					if _, err := result.LastInsertId(); err != nil {
-						t.Fatalf("%+v\n", err)
-					}
-					if _, err := result.RowsAffected(); err != nil {
-						t.Fatalf("%+v\n", err)
-					}
-				})
-			})
+			testPrepareContextWithNotShardingTable(t, ctx, db)
 		})
 	})
 	if _, err := db.ExecContext(ctx, "update users set name = 'alice' where id = 1"); err != nil {
@@ -395,6 +411,122 @@ func TestDB(t *testing.T) {
 	}
 }
 
+func testTransactionStmtError(t *testing.T, tx *Tx, stmt *Stmt) {
+	t.Run("error", func(t *testing.T) {
+		if stmt := tx.Stmt(nil); stmt == nil {
+			t.Fatal("cannot handle error")
+		}
+		invalidStmt := tx.StmtContext(nil, nil)
+		if _, err := invalidStmt.ExecContext(nil, ""); err == nil {
+			t.Fatal("cannot handle error")
+		}
+		if _, err := invalidStmt.Exec(""); err == nil {
+			t.Fatal("cannot handle error")
+		}
+		if _, err := invalidStmt.QueryContext(nil, ""); err == nil {
+			t.Fatal("cannot handle error")
+		}
+		if _, err := invalidStmt.Query(""); err == nil {
+			t.Fatal("cannot handle error")
+		}
+	})
+}
+
+func testTransactionQueryRowWithoutContext(t *testing.T, stmt *Stmt) {
+	t.Run("query row without context", func(t *testing.T) {
+		var (
+			name  NullString
+			age   NullInt64
+			isGod NullBool
+			point NullFloat64
+		)
+		checkErr(t, stmt.QueryRow(1).Scan(&name, &age, &isGod, &point))
+		nameValue, err := name.Value()
+		checkErr(t, err)
+		if nameValue.(string) != "alice" {
+			t.Fatal("cannot scan")
+		}
+		ageValue, err := age.Value()
+		checkErr(t, err)
+		if ageValue.(int64) != 10 {
+			t.Fatal("cannot scan")
+		}
+		isGodValue, err := isGod.Value()
+		checkErr(t, err)
+		if !isGodValue.(bool) {
+			t.Fatal("cannot scan")
+		}
+		pointValue, err := point.Value()
+		checkErr(t, err)
+		if int(pointValue.(float64)) != 3 {
+			t.Fatal("cannot scan")
+		}
+	})
+}
+
+func testTransactionQueryRowWithContext(t *testing.T, ctx context.Context, stmt *Stmt) {
+	t.Run("query row with context", func(t *testing.T) {
+		var (
+			name  NullString
+			age   NullInt64
+			isGod NullBool
+			point NullFloat64
+		)
+		stmt.QueryRowContext(ctx, 1).Scan(&name, &age, &isGod, &point)
+		nameValue, err := name.Value()
+		checkErr(t, err)
+		if nameValue.(string) != "alice" {
+			t.Fatal("cannot scan")
+		}
+	})
+}
+
+func testTransactionWithNotShardingTable(t *testing.T, ctx context.Context, tx *Tx) {
+	t.Run("query", func(t *testing.T) {
+		stmt, err := tx.PrepareContext(ctx, "select * from user_stages where id = ?")
+		checkErr(t, err)
+		defer stmt.Close()
+		if stmt := tx.StmtContext(ctx, stmt); stmt == nil {
+			t.Fatalf("invalid stmt instance")
+		}
+		if stmt := tx.Stmt(stmt); stmt == nil {
+			t.Fatalf("invalid stmt instance")
+		} else {
+			if _, err := stmt.Exec("update user_stages set name = 'alice'"); err != nil {
+				t.Fatalf("%+v\n", err)
+			}
+		}
+		testTransactionStmtError(t, tx, stmt)
+		testTransactionQueryRowWithoutContext(t, stmt)
+		testTransactionQueryRowWithContext(t, ctx, stmt)
+	})
+	t.Run("exec", func(t *testing.T) {
+		stmt, err := tx.Prepare("update user_stages set name = 'bob' where id = ?")
+		checkErr(t, err)
+		defer stmt.Close()
+		t.Run("exec without context", func(t *testing.T) {
+			result, err := stmt.Exec(1)
+			checkErr(t, err)
+			if _, err := result.LastInsertId(); err != nil {
+				t.Fatalf("%+v\n", err)
+			}
+			if _, err := result.RowsAffected(); err != nil {
+				t.Fatalf("%+v\n", err)
+			}
+		})
+		t.Run("exec with context", func(t *testing.T) {
+			result, err := stmt.ExecContext(ctx, 1)
+			checkErr(t, err)
+			if _, err := result.LastInsertId(); err != nil {
+				t.Fatalf("%+v\n", err)
+			}
+			if _, err := result.RowsAffected(); err != nil {
+				t.Fatalf("%+v\n", err)
+			}
+		})
+	})
+}
+
 func TestTransaction(t *testing.T) {
 	db, err := Open("sqlite3", "?parseTime=true&loc=Asia%2FTokyo")
 	checkErr(t, err)
@@ -405,107 +537,7 @@ func TestTransaction(t *testing.T) {
 	defer cancel()
 	t.Run("prepare context", func(t *testing.T) {
 		t.Run("not sharding table", func(t *testing.T) {
-			t.Run("query", func(t *testing.T) {
-				stmt, err := tx.PrepareContext(ctx, "select * from user_stages where id = ?")
-				checkErr(t, err)
-				defer stmt.Close()
-				if stmt := tx.StmtContext(ctx, stmt); stmt == nil {
-					t.Fatalf("invalid stmt instance")
-				}
-				if stmt := tx.Stmt(stmt); stmt == nil {
-					t.Fatalf("invalid stmt instance")
-				} else {
-					if _, err := stmt.Exec("update user_stages set name = 'alice'"); err != nil {
-						t.Fatalf("%+v\n", err)
-					}
-				}
-				t.Run("error", func(t *testing.T) {
-					if stmt := tx.Stmt(nil); stmt == nil {
-						t.Fatal("cannot handle error")
-					}
-					invalidStmt := tx.StmtContext(nil, nil)
-					if _, err := invalidStmt.ExecContext(nil, ""); err == nil {
-						t.Fatal("cannot handle error")
-					}
-					if _, err := invalidStmt.Exec(""); err == nil {
-						t.Fatal("cannot handle error")
-					}
-					if _, err := invalidStmt.QueryContext(nil, ""); err == nil {
-						t.Fatal("cannot handle error")
-					}
-					if _, err := invalidStmt.Query(""); err == nil {
-						t.Fatal("cannot handle error")
-					}
-				})
-				t.Run("query row without context", func(t *testing.T) {
-					var (
-						name  NullString
-						age   NullInt64
-						isGod NullBool
-						point NullFloat64
-					)
-					checkErr(t, stmt.QueryRow(1).Scan(&name, &age, &isGod, &point))
-					nameValue, err := name.Value()
-					checkErr(t, err)
-					if nameValue.(string) != "alice" {
-						t.Fatal("cannot scan")
-					}
-					ageValue, err := age.Value()
-					checkErr(t, err)
-					if ageValue.(int64) != 10 {
-						t.Fatal("cannot scan")
-					}
-					isGodValue, err := isGod.Value()
-					checkErr(t, err)
-					if !isGodValue.(bool) {
-						t.Fatal("cannot scan")
-					}
-					pointValue, err := point.Value()
-					checkErr(t, err)
-					if int(pointValue.(float64)) != 3 {
-						t.Fatal("cannot scan")
-					}
-				})
-				t.Run("query row with context", func(t *testing.T) {
-					var (
-						name  NullString
-						age   NullInt64
-						isGod NullBool
-						point NullFloat64
-					)
-					stmt.QueryRowContext(ctx, 1).Scan(&name, &age, &isGod, &point)
-					nameValue, err := name.Value()
-					checkErr(t, err)
-					if nameValue.(string) != "alice" {
-						t.Fatal("cannot scan")
-					}
-				})
-			})
-			t.Run("exec", func(t *testing.T) {
-				stmt, err := tx.Prepare("update user_stages set name = 'bob' where id = ?")
-				checkErr(t, err)
-				defer stmt.Close()
-				t.Run("exec without context", func(t *testing.T) {
-					result, err := stmt.Exec(1)
-					checkErr(t, err)
-					if _, err := result.LastInsertId(); err != nil {
-						t.Fatalf("%+v\n", err)
-					}
-					if _, err := result.RowsAffected(); err != nil {
-						t.Fatalf("%+v\n", err)
-					}
-				})
-				t.Run("exec with context", func(t *testing.T) {
-					result, err := stmt.ExecContext(ctx, 1)
-					checkErr(t, err)
-					if _, err := result.LastInsertId(); err != nil {
-						t.Fatalf("%+v\n", err)
-					}
-					if _, err := result.RowsAffected(); err != nil {
-						t.Fatalf("%+v\n", err)
-					}
-				})
-			})
+			testTransactionWithNotShardingTable(t, ctx, tx)
 		})
 	})
 
@@ -559,22 +591,9 @@ func TestTransaction(t *testing.T) {
 	})
 }
 
-func TestError(t *testing.T) {
-	adapter.Register("test", &TestAdapter{adapterName: "test"})
-	confPath := filepath.Join(path.ThisDirPath(), "error_config.yml")
-	cfg, err := config.Load(confPath)
-	checkErr(t, err)
-	checkErr(t, connection.SetConfig(cfg))
+var openErr = errors.New("open error")
 
-	openErr := errors.New("open error")
-	RegisterByOctillery("test", &TestDriver{openErr: openErr})
-	t.Run("invalid query string", func(t *testing.T) {
-		if _, err := Open("", "?#%"); err == nil {
-			t.Fatal("cannot handle error")
-		}
-	})
-	db, err := Open("", "")
-	checkErr(t, err)
+func testPrepareError(t *testing.T, db *DB) {
 	t.Run("error prepare", func(t *testing.T) {
 		stmt, err := db.Prepare("select name from user_errors where id = ?")
 		if errors.Cause(err) != openErr {
@@ -584,6 +603,9 @@ func TestError(t *testing.T) {
 			t.Fatal("cannot handle error")
 		}
 	})
+}
+
+func testPrepareContextError(t *testing.T, db *DB) {
 	t.Run("error prepare context", func(t *testing.T) {
 		stmt, err := db.PrepareContext(nil, "select name from user_errors where id = ?")
 		if errors.Cause(err) != openErr {
@@ -593,6 +615,9 @@ func TestError(t *testing.T) {
 			t.Fatal("cannot handle error")
 		}
 	})
+}
+
+func testExecError(t *testing.T, db *DB) {
 	t.Run("error exec", func(t *testing.T) {
 		result, err := db.Exec("update user_errors set name = 'alice' where id = ?", 1)
 		if errors.Cause(err) != openErr {
@@ -602,6 +627,9 @@ func TestError(t *testing.T) {
 			t.Fatal("cannot handle error")
 		}
 	})
+}
+
+func testExecContextError(t *testing.T, db *DB) {
 	t.Run("error exec context", func(t *testing.T) {
 		result, err := db.ExecContext(nil, "update user_errors set name = 'alice' where id = ?", 1)
 		if errors.Cause(err) != openErr {
@@ -611,6 +639,9 @@ func TestError(t *testing.T) {
 			t.Fatal("cannot handle error")
 		}
 	})
+}
+
+func testQueryError(t *testing.T, db *DB) {
 	t.Run("error query", func(t *testing.T) {
 		rows, err := db.Query("select * from user_errors")
 		if errors.Cause(err) != openErr {
@@ -620,6 +651,9 @@ func TestError(t *testing.T) {
 			t.Fatal("cannot handle error")
 		}
 	})
+}
+
+func testQueryContextError(t *testing.T, db *DB) {
 	t.Run("error query context", func(t *testing.T) {
 		rows, err := db.QueryContext(nil, "select * from user_errors")
 		if errors.Cause(err) != openErr {
@@ -629,6 +663,9 @@ func TestError(t *testing.T) {
 			t.Fatal("cannot handle error")
 		}
 	})
+}
+
+func testQueryRowError(t *testing.T, db *DB) {
 	t.Run("error query row", func(t *testing.T) {
 		row := db.QueryRow("select * from user_errors where id = 1")
 		var name string
@@ -636,6 +673,9 @@ func TestError(t *testing.T) {
 			t.Fatalf("%+v\n", err)
 		}
 	})
+}
+
+func testQueryRowContextError(t *testing.T, db *DB) {
 	t.Run("error query row context", func(t *testing.T) {
 		row := db.QueryRowContext(nil, "select * from user_errors where id = 1")
 		var name string
@@ -643,8 +683,9 @@ func TestError(t *testing.T) {
 			t.Fatalf("%+v\n", err)
 		}
 	})
-	tx, err := db.Begin()
-	checkErr(t, err)
+}
+
+func testPrepareTransactionError(t *testing.T, tx *Tx) {
 	t.Run("error prepare", func(t *testing.T) {
 		stmt, err := tx.Prepare("select name from user_errors where id = ?")
 		if errors.Cause(err) != openErr {
@@ -654,6 +695,9 @@ func TestError(t *testing.T) {
 			t.Fatal("cannot handle error")
 		}
 	})
+}
+
+func testPrepareContextTransactionError(t *testing.T, tx *Tx) {
 	t.Run("error prepare context", func(t *testing.T) {
 		stmt, err := tx.PrepareContext(nil, "select name from user_errors where id = ?")
 		if errors.Cause(err) != openErr {
@@ -663,6 +707,9 @@ func TestError(t *testing.T) {
 			t.Fatal("cannot handle error")
 		}
 	})
+}
+
+func testExecTransactionError(t *testing.T, tx *Tx) {
 	t.Run("error exec", func(t *testing.T) {
 		result, err := tx.Exec("update user_errors set name = 'alice' where id = ?", 1)
 		if errors.Cause(err) != openErr {
@@ -672,6 +719,9 @@ func TestError(t *testing.T) {
 			t.Fatal("cannot handle error")
 		}
 	})
+}
+
+func testExecContextTransactionError(t *testing.T, tx *Tx) {
 	t.Run("error exec context", func(t *testing.T) {
 		result, err := tx.ExecContext(nil, "update user_errors set name = 'alice' where id = ?", 1)
 		if errors.Cause(err) != openErr {
@@ -681,6 +731,9 @@ func TestError(t *testing.T) {
 			t.Fatal("cannot handle error")
 		}
 	})
+}
+
+func testQueryTransactionError(t *testing.T, tx *Tx) {
 	t.Run("error query", func(t *testing.T) {
 		rows, err := tx.Query("select * from user_errors")
 		if errors.Cause(err) != openErr {
@@ -690,6 +743,9 @@ func TestError(t *testing.T) {
 			t.Fatal("cannot handle error")
 		}
 	})
+}
+
+func testQueryContextTransactionError(t *testing.T, tx *Tx) {
 	t.Run("error query context", func(t *testing.T) {
 		rows, err := tx.QueryContext(nil, "select * from user_errors")
 		if errors.Cause(err) != openErr {
@@ -699,6 +755,9 @@ func TestError(t *testing.T) {
 			t.Fatal("cannot handle error")
 		}
 	})
+}
+
+func testQueryRowTransactionError(t *testing.T, tx *Tx) {
 	t.Run("error query row", func(t *testing.T) {
 		row := tx.QueryRow("select * from user_errors where id = 1")
 		var name string
@@ -706,6 +765,9 @@ func TestError(t *testing.T) {
 			t.Fatalf("%+v\n", err)
 		}
 	})
+}
+
+func testQueryRowContextTransactionError(t *testing.T, tx *Tx) {
 	t.Run("error query row context", func(t *testing.T) {
 		row := tx.QueryRowContext(nil, "select * from user_errors where id = 1")
 		var name string
@@ -713,6 +775,42 @@ func TestError(t *testing.T) {
 			t.Fatalf("%+v\n", err)
 		}
 	})
+}
+
+func TestError(t *testing.T) {
+	adapter.Register("test", &TestAdapter{adapterName: "test"})
+	confPath := filepath.Join(path.ThisDirPath(), "error_config.yml")
+	cfg, err := config.Load(confPath)
+	checkErr(t, err)
+	checkErr(t, connection.SetConfig(cfg))
+
+	RegisterByOctillery("test", &TestDriver{openErr: openErr})
+	t.Run("invalid query string", func(t *testing.T) {
+		if _, err := Open("", "?#%"); err == nil {
+			t.Fatal("cannot handle error")
+		}
+	})
+	db, err := Open("", "")
+	checkErr(t, err)
+	testPrepareError(t, db)
+	testPrepareContextError(t, db)
+	testExecError(t, db)
+	testExecContextError(t, db)
+	testQueryError(t, db)
+	testQueryContextError(t, db)
+	testQueryRowError(t, db)
+	testQueryRowContextError(t, db)
+
+	tx, err := db.Begin()
+	checkErr(t, err)
+	testPrepareTransactionError(t, tx)
+	testPrepareContextTransactionError(t, tx)
+	testExecTransactionError(t, tx)
+	testExecContextTransactionError(t, tx)
+	testQueryTransactionError(t, tx)
+	testQueryContextTransactionError(t, tx)
+	testQueryRowTransactionError(t, tx)
+	testQueryRowContextTransactionError(t, tx)
 	t.Run("error commit", func(t *testing.T) {
 		if err := tx.Commit(); err == nil {
 			t.Fatal("cannot handle error")

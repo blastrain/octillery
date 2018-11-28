@@ -34,6 +34,7 @@ import (
 	"go.knocknote.io/octillery/transposer"
 )
 
+// Option type for command line options
 type Option struct {
 	Version   VersionCommand   `description:"print the version of octillery" command:"version"`
 	Transpose TransposeCommand `description:"replace 'database/sql' to 'go.knocknote.io/octillery/database/sql'" command:"transpose"`
@@ -44,32 +45,39 @@ type Option struct {
 	Shard     ShardCommand     `description:"get sharded database information by sharding key" command:"shard"`
 }
 
+// VersionCommand type for version command
 type VersionCommand struct {
 }
 
+// TransposeCommand type for transpose command
 type TransposeCommand struct {
 	DryRun bool     `long:"dry-run" description:"show diff only"`
 	Ignore []string `long:"ignore"  description:"ignore directory or file"`
 }
 
+// MigrateCommand type for migrate command
 type MigrateCommand struct {
 	DryRun bool   `long:"dry-run" description:"show diff only"`
 	Config string `long:"config" short:"c" description:"database configuration file path" required:"config path"`
 }
 
+// ImportCommand type for import command
 type ImportCommand struct {
 	Config string `long:"config" short:"c" description:"database configuration file path" required:"config path"`
 }
 
+// ConsoleCommand type for console command
 type ConsoleCommand struct {
 	Config string `long:"config" short:"c" description:"database configuration file path" required:"config path"`
 }
 
+// InstallCommand type for install command
 type InstallCommand struct {
 	MySQLAdapter  bool `long:"mysql"  description:"install mysql adapter"`
 	SQLiteAdapter bool `long:"sqlite" description:"install sqlite3 adapter"`
 }
 
+// ShardCommand type for shard command
 type ShardCommand struct {
 	ShardID int64  `long:"id"     short:"i" description:"id of sharding key column" required:"id"`
 	Config  string `long:"config" short:"c" description:"database configuration file path" required:"config path"`
@@ -77,6 +85,7 @@ type ShardCommand struct {
 
 var opts Option
 
+// Execute executes version command
 func (cmd *VersionCommand) Execute(args []string) error {
 	fmt.Printf(
 		"octillery version %s, built with go %s for %s/%s\n",
@@ -88,6 +97,7 @@ func (cmd *VersionCommand) Execute(args []string) error {
 	return nil
 }
 
+// Execute executes tranpose command
 func (cmd *TransposeCommand) Execute(args []string) error {
 	searchPath := "."
 	if len(args) > 0 {
@@ -172,12 +182,14 @@ func (cmd *MigrateCommand) compareSchema(from schemalex.SchemaSource, to schemal
 	return buf.String(), nil
 }
 
+// CompareResult type for results of comparing schema
 type CompareResult struct {
 	diff string
 	dsn  string
 	conn *coresql.DB
 }
 
+// CombinedQuery has all `sqlparser.Query` for a DNS
 type CombinedQuery struct {
 	queries []sqlparser.Query
 	conn    *coresql.DB
@@ -193,6 +205,8 @@ func (c *CombinedQuery) allDDL() string {
 	return strings.Join(allDDL, ";\n")
 }
 
+// Execute executes migrate command
+// nolint: gocyclo
 func (cmd *MigrateCommand) Execute(args []string) error {
 	if len(args) == 0 {
 		return errors.New("argument is required. it is path to directory includes schema file or direct path to schema file")
@@ -396,22 +410,35 @@ var (
 	textPattern      = regexp.MustCompile(`(?i)text`)
 )
 
+// GoType type of Go for mapping from MySQL type
 type GoType int
 
 const (
+	// UnknownType the undefined type
 	UnknownType GoType = iota
+	// GoString type of string
 	GoString
+	// GoBytes type of bytes
 	GoBytes
+	// GoUint type of uint
 	GoUint
+	// GoInt type of int
 	GoInt
+	// GoFloat type of float
 	GoFloat
+	// GoDateFormat type of time.Time
 	GoDateFormat
+	// GoTimeFormat type of time.Time
 	GoTimeFormat
+	// GoDateTimeFormat type of time.Time
 	GoDateTimeFormat
+	// GoTimeStampFormat type of time.Time
 	GoTimeStampFormat
+	// GoYearFormat type of time.Time
 	GoYearFormat
 )
 
+// nolint: gocyclo
 func (cmd *ImportCommand) convertMySQLTypeToGOType(typ string) GoType {
 	if charPattern.MatchString(typ) ||
 		enumPattern.MatchString(typ) ||
@@ -472,6 +499,7 @@ func (cmd *ImportCommand) timeValueWithFormat(format string, v string) (*time.Ti
 	return &value, nil
 }
 
+// nolint: gocyclo
 func (cmd *ImportCommand) values(record []string, types []GoType, columns []string, tableName string) ([]interface{}, error) {
 	values := []interface{}{}
 	for idx, v := range record {
@@ -533,6 +561,8 @@ func (cmd *ImportCommand) values(record []string, types []GoType, columns []stri
 	return values, nil
 }
 
+// Execute executes import command
+// nolint: gocyclo
 func (cmd *ImportCommand) Execute(args []string) error {
 	if len(args) == 0 {
 		return errors.New("argument is required. it is path to directory includes schema file or direct path to schema file")
@@ -609,7 +639,7 @@ func (cmd *ImportCommand) Execute(args []string) error {
 		}
 
 		placeholders := []string{}
-		for i := 0; i < len(columns); i += 1 {
+		for i := 0; i < len(columns); i++ {
 			placeholders = append(placeholders, "?")
 		}
 		escapedColumns := []string{}
@@ -629,7 +659,7 @@ func (cmd *ImportCommand) Execute(args []string) error {
 			if _, err := conn.Exec(fmt.Sprintf("TRUNCATE TABLE `%s`", tableName)); err != nil {
 				return errors.Wrapf(err, "cannot truncate table %s", tableName)
 			}
-			for i := 0; i < allBulkRequestNum; i += 1 {
+			for i := 0; i < allBulkRequestNum; i++ {
 				start := i * maxPlaceholderNum
 				end := start + maxPlaceholderNum
 				if (i + 1) == allBulkRequestNum {
@@ -674,6 +704,7 @@ func (cmd *ImportCommand) Execute(args []string) error {
 	return nil
 }
 
+// Execute executes console command
 func (cmd *ConsoleCommand) Execute(args []string) error {
 	if err := octillery.LoadConfig(cmd.Config); err != nil {
 		return errors.WithStack(err)
@@ -726,6 +757,7 @@ func (cmd *InstallCommand) lookupOctillery() (string, error) {
 	return "", errors.New("cannot find 'go.knocknote.io/octillery' library")
 }
 
+// Execute executes install command
 func (cmd *InstallCommand) Execute(args []string) error {
 	var sourcePath string
 	if len(args) > 0 {
@@ -760,6 +792,7 @@ func (cmd *InstallCommand) Execute(args []string) error {
 	return errors.WithStack(ioutil.WriteFile(pluginPath, adapterData, 0644))
 }
 
+// Execute executes shard command
 func (cmd *ShardCommand) Execute(args []string) error {
 	if len(args) == 0 {
 		return errors.New("required table name included configuration file")

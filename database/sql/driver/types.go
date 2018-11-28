@@ -200,6 +200,7 @@ func callValuerValue(vr Valuer) (v Value, err error) {
 }
 
 // ConvertValue the compatible method of ConvertValue in 'database/sql/driver' package.
+// nolint: gocyclo
 func (defaultConverter) ConvertValue(v interface{}) (Value, error) {
 	if IsValue(v) {
 		return v, nil
