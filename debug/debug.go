@@ -6,6 +6,7 @@ import (
 	"runtime"
 )
 
+// DEBUG variable for DEBUG mode
 var DEBUG bool
 
 // SetDebug set whether debug mode or not.
@@ -15,6 +16,7 @@ func SetDebug(isDebug bool) {
 	DEBUG = isDebug
 }
 
+// Printf print message if DEBUG mode
 func Printf(format string, args ...interface{}) {
 	if DEBUG {
 		_, file, line, _ := runtime.Caller(1)
