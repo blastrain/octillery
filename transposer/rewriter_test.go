@@ -1,9 +1,10 @@
 package transposer
 
 import (
+	"testing"
+
 	"github.com/fatih/color"
 	"github.com/sergi/go-diff/diffmatchpatch"
-	"testing"
 )
 
 var deleteDiff = diffmatchpatch.Diff{
@@ -86,10 +87,10 @@ func TestGetDiff(t *testing.T) {
 func getDiffContext() *Rewriter {
 	r := NewRewriter()
 	diffs := r.getDiff(textA, textB)
-	r.Ctx.Diffs = diffs
+	r.ctx.Diffs = diffs
 	for idx, diff := range diffs {
 		if diff.Type != diffmatchpatch.DiffEqual {
-			r.Ctx.CurrentDiffIdx = idx
+			r.ctx.CurrentDiffIdx = idx
 			break
 		}
 	}
@@ -106,7 +107,7 @@ func TestSplitCurrentDiffLines(t *testing.T) {
 
 func TestBeforeAroundLines(t *testing.T) {
 	r := getDiffContext()
-	lines := r.Ctx.beforeAroundLines()
+	lines := r.ctx.beforeAroundLines()
 	if len(lines) != 3 {
 		t.Error("cannot exactly get around lines", lines)
 	}
@@ -114,7 +115,7 @@ func TestBeforeAroundLines(t *testing.T) {
 
 func TestAfterAroundLiens(t *testing.T) {
 	r := getDiffContext()
-	lines := r.Ctx.afterAroundLines()
+	lines := r.ctx.afterAroundLines()
 	if len(lines) != 0 {
 		t.Error("cannot exactly get around lines", lines)
 	}
