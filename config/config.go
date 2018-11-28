@@ -7,6 +7,7 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
+// DatabaseConfig type for database definition
 type DatabaseConfig struct {
 	// database name of MySQL or database file path of SQLite
 	NameOrPath string `yaml:"database"`
@@ -33,6 +34,7 @@ type DatabaseConfig struct {
 	Backups []string `yaml:"backup"`
 }
 
+// TableConfig type for table definition
 type TableConfig struct {
 	DatabaseConfig `yaml:",inline"`
 
@@ -62,6 +64,7 @@ func (c *TableConfig) IsUsedSequencer() bool {
 	return c.IsShard && c.ShardColumnName != "" && c.Sequencer != nil
 }
 
+// ShardConfigByName returns DatabaseConfig instance by name of shards
 func (c *TableConfig) ShardConfigByName(shardName string) *DatabaseConfig {
 	for _, shard := range c.Shards {
 		if cfg, exists := shard[shardName]; exists {
