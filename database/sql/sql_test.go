@@ -262,7 +262,7 @@ func testRows(t *testing.T, rows *Rows) {
 	}
 }
 
-func testPrepareWithNotShardingTable(t *testing.T, ctx context.Context, db *DB) {
+func testPrepareWithNotShardingTable(ctx context.Context, t *testing.T, db *DB) {
 	stmt, err := db.PrepareContext(ctx, "select name from user_stages where id = ?")
 	checkErr(t, err)
 	defer stmt.Close()
@@ -301,7 +301,7 @@ func testPrepareWithNotShardingTable(t *testing.T, ctx context.Context, db *DB) 
 	})
 }
 
-func testPrepareContextWithNotShardingTable(t *testing.T, ctx context.Context, db *DB) {
+func testPrepareContextWithNotShardingTable(ctx context.Context, t *testing.T, db *DB) {
 	t.Run("query", func(t *testing.T) {
 		stmt, err := db.Prepare("select * from user_stages where id = ?")
 		checkErr(t, err)
@@ -377,12 +377,12 @@ func TestDB(t *testing.T) {
 	checkErr(t, db.Ping())
 	t.Run("prepare context", func(t *testing.T) {
 		t.Run("not sharding table", func(t *testing.T) {
-			testPrepareWithNotShardingTable(t, ctx, db)
+			testPrepareWithNotShardingTable(ctx, t, db)
 		})
 	})
 	t.Run("prepare", func(t *testing.T) {
 		t.Run("not sharding table", func(t *testing.T) {
-			testPrepareContextWithNotShardingTable(t, ctx, db)
+			testPrepareContextWithNotShardingTable(ctx, t, db)
 		})
 	})
 	if _, err := db.ExecContext(ctx, "update users set name = 'alice' where id = 1"); err != nil {
@@ -464,7 +464,7 @@ func testTransactionQueryRowWithoutContext(t *testing.T, stmt *Stmt) {
 	})
 }
 
-func testTransactionQueryRowWithContext(t *testing.T, ctx context.Context, stmt *Stmt) {
+func testTransactionQueryRowWithContext(ctx context.Context, t *testing.T, stmt *Stmt) {
 	t.Run("query row with context", func(t *testing.T) {
 		var (
 			name  NullString
@@ -481,7 +481,7 @@ func testTransactionQueryRowWithContext(t *testing.T, ctx context.Context, stmt 
 	})
 }
 
-func testTransactionWithNotShardingTable(t *testing.T, ctx context.Context, tx *Tx) {
+func testTransactionWithNotShardingTable(ctx context.Context, t *testing.T, tx *Tx) {
 	t.Run("query", func(t *testing.T) {
 		stmt, err := tx.PrepareContext(ctx, "select * from user_stages where id = ?")
 		checkErr(t, err)
@@ -498,7 +498,7 @@ func testTransactionWithNotShardingTable(t *testing.T, ctx context.Context, tx *
 		}
 		testTransactionStmtError(t, tx, stmt)
 		testTransactionQueryRowWithoutContext(t, stmt)
-		testTransactionQueryRowWithContext(t, ctx, stmt)
+		testTransactionQueryRowWithContext(ctx, t, stmt)
 	})
 	t.Run("exec", func(t *testing.T) {
 		stmt, err := tx.Prepare("update user_stages set name = 'bob' where id = ?")
@@ -537,7 +537,7 @@ func TestTransaction(t *testing.T) {
 	defer cancel()
 	t.Run("prepare context", func(t *testing.T) {
 		t.Run("not sharding table", func(t *testing.T) {
-			testTransactionWithNotShardingTable(t, ctx, tx)
+			testTransactionWithNotShardingTable(ctx, t, tx)
 		})
 	})
 
@@ -591,12 +591,12 @@ func TestTransaction(t *testing.T) {
 	})
 }
 
-var openErr = errors.New("open error")
+var errOpen = errors.New("open error")
 
 func testPrepareError(t *testing.T, db *DB) {
 	t.Run("error prepare", func(t *testing.T) {
 		stmt, err := db.Prepare("select name from user_errors where id = ?")
-		if errors.Cause(err) != openErr {
+		if errors.Cause(err) != errOpen {
 			t.Fatalf("%+v\n", err)
 		}
 		if stmt != nil {
@@ -608,7 +608,7 @@ func testPrepareError(t *testing.T, db *DB) {
 func testPrepareContextError(t *testing.T, db *DB) {
 	t.Run("error prepare context", func(t *testing.T) {
 		stmt, err := db.PrepareContext(nil, "select name from user_errors where id = ?")
-		if errors.Cause(err) != openErr {
+		if errors.Cause(err) != errOpen {
 			t.Fatalf("%+v\n", err)
 		}
 		if stmt != nil {
@@ -620,7 +620,7 @@ func testPrepareContextError(t *testing.T, db *DB) {
 func testExecError(t *testing.T, db *DB) {
 	t.Run("error exec", func(t *testing.T) {
 		result, err := db.Exec("update user_errors set name = 'alice' where id = ?", 1)
-		if errors.Cause(err) != openErr {
+		if errors.Cause(err) != errOpen {
 			t.Fatalf("%+v\n", err)
 		}
 		if result != nil {
@@ -632,7 +632,7 @@ func testExecError(t *testing.T, db *DB) {
 func testExecContextError(t *testing.T, db *DB) {
 	t.Run("error exec context", func(t *testing.T) {
 		result, err := db.ExecContext(nil, "update user_errors set name = 'alice' where id = ?", 1)
-		if errors.Cause(err) != openErr {
+		if errors.Cause(err) != errOpen {
 			t.Fatalf("%+v\n", err)
 		}
 		if result != nil {
@@ -644,7 +644,7 @@ func testExecContextError(t *testing.T, db *DB) {
 func testQueryError(t *testing.T, db *DB) {
 	t.Run("error query", func(t *testing.T) {
 		rows, err := db.Query("select * from user_errors")
-		if errors.Cause(err) != openErr {
+		if errors.Cause(err) != errOpen {
 			t.Fatalf("%+v\n", err)
 		}
 		if rows != nil {
@@ -656,7 +656,7 @@ func testQueryError(t *testing.T, db *DB) {
 func testQueryContextError(t *testing.T, db *DB) {
 	t.Run("error query context", func(t *testing.T) {
 		rows, err := db.QueryContext(nil, "select * from user_errors")
-		if errors.Cause(err) != openErr {
+		if errors.Cause(err) != errOpen {
 			t.Fatalf("%+v\n", err)
 		}
 		if rows != nil {
@@ -669,7 +669,7 @@ func testQueryRowError(t *testing.T, db *DB) {
 	t.Run("error query row", func(t *testing.T) {
 		row := db.QueryRow("select * from user_errors where id = 1")
 		var name string
-		if err := row.Scan(&name); errors.Cause(err) != openErr {
+		if err := row.Scan(&name); errors.Cause(err) != errOpen {
 			t.Fatalf("%+v\n", err)
 		}
 	})
@@ -679,7 +679,7 @@ func testQueryRowContextError(t *testing.T, db *DB) {
 	t.Run("error query row context", func(t *testing.T) {
 		row := db.QueryRowContext(nil, "select * from user_errors where id = 1")
 		var name string
-		if err := row.Scan(&name); errors.Cause(err) != openErr {
+		if err := row.Scan(&name); errors.Cause(err) != errOpen {
 			t.Fatalf("%+v\n", err)
 		}
 	})
@@ -688,7 +688,7 @@ func testQueryRowContextError(t *testing.T, db *DB) {
 func testPrepareTransactionError(t *testing.T, tx *Tx) {
 	t.Run("error prepare", func(t *testing.T) {
 		stmt, err := tx.Prepare("select name from user_errors where id = ?")
-		if errors.Cause(err) != openErr {
+		if errors.Cause(err) != errOpen {
 			t.Fatalf("%+v\n", err)
 		}
 		if stmt != nil {
@@ -700,7 +700,7 @@ func testPrepareTransactionError(t *testing.T, tx *Tx) {
 func testPrepareContextTransactionError(t *testing.T, tx *Tx) {
 	t.Run("error prepare context", func(t *testing.T) {
 		stmt, err := tx.PrepareContext(nil, "select name from user_errors where id = ?")
-		if errors.Cause(err) != openErr {
+		if errors.Cause(err) != errOpen {
 			t.Fatalf("%+v\n", err)
 		}
 		if stmt != nil {
@@ -712,7 +712,7 @@ func testPrepareContextTransactionError(t *testing.T, tx *Tx) {
 func testExecTransactionError(t *testing.T, tx *Tx) {
 	t.Run("error exec", func(t *testing.T) {
 		result, err := tx.Exec("update user_errors set name = 'alice' where id = ?", 1)
-		if errors.Cause(err) != openErr {
+		if errors.Cause(err) != errOpen {
 			t.Fatalf("%+v\n", err)
 		}
 		if result != nil {
@@ -724,7 +724,7 @@ func testExecTransactionError(t *testing.T, tx *Tx) {
 func testExecContextTransactionError(t *testing.T, tx *Tx) {
 	t.Run("error exec context", func(t *testing.T) {
 		result, err := tx.ExecContext(nil, "update user_errors set name = 'alice' where id = ?", 1)
-		if errors.Cause(err) != openErr {
+		if errors.Cause(err) != errOpen {
 			t.Fatalf("%+v\n", err)
 		}
 		if result != nil {
@@ -736,7 +736,7 @@ func testExecContextTransactionError(t *testing.T, tx *Tx) {
 func testQueryTransactionError(t *testing.T, tx *Tx) {
 	t.Run("error query", func(t *testing.T) {
 		rows, err := tx.Query("select * from user_errors")
-		if errors.Cause(err) != openErr {
+		if errors.Cause(err) != errOpen {
 			t.Fatalf("%+v\n", err)
 		}
 		if rows != nil {
@@ -748,7 +748,7 @@ func testQueryTransactionError(t *testing.T, tx *Tx) {
 func testQueryContextTransactionError(t *testing.T, tx *Tx) {
 	t.Run("error query context", func(t *testing.T) {
 		rows, err := tx.QueryContext(nil, "select * from user_errors")
-		if errors.Cause(err) != openErr {
+		if errors.Cause(err) != errOpen {
 			t.Fatalf("%+v\n", err)
 		}
 		if rows != nil {
@@ -761,7 +761,7 @@ func testQueryRowTransactionError(t *testing.T, tx *Tx) {
 	t.Run("error query row", func(t *testing.T) {
 		row := tx.QueryRow("select * from user_errors where id = 1")
 		var name string
-		if err := row.Scan(&name); errors.Cause(err) != openErr {
+		if err := row.Scan(&name); errors.Cause(err) != errOpen {
 			t.Fatalf("%+v\n", err)
 		}
 	})
@@ -771,7 +771,7 @@ func testQueryRowContextTransactionError(t *testing.T, tx *Tx) {
 	t.Run("error query row context", func(t *testing.T) {
 		row := tx.QueryRowContext(nil, "select * from user_errors where id = 1")
 		var name string
-		if err := row.Scan(&name); errors.Cause(err) != openErr {
+		if err := row.Scan(&name); errors.Cause(err) != errOpen {
 			t.Fatalf("%+v\n", err)
 		}
 	})
@@ -784,7 +784,7 @@ func TestError(t *testing.T) {
 	checkErr(t, err)
 	checkErr(t, connection.SetConfig(cfg))
 
-	RegisterByOctillery("test", &TestDriver{openErr: openErr})
+	RegisterByOctillery("test", &TestDriver{openErr: errOpen})
 	t.Run("invalid query string", func(t *testing.T) {
 		if _, err := Open("", "?#%"); err == nil {
 			t.Fatal("cannot handle error")

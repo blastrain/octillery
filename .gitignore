@@ -1,0 +1,3 @@
+plugin/mysql.go
+plugin/sqlite3.go
+vendor

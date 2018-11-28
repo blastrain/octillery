@@ -100,7 +100,7 @@ type TxConnection struct {
 	opts   *sql.TxOptions
 }
 
-// ValidateConnection validate whether connection is same DSN conneciton that executed SQL previously or not.
+// ValidateConnection validate whether connection is same DSN connection that executed SQL previously or not.
 func (c *TxConnection) ValidateConnection(conn *DBConnection) error {
 	if c.dbConn == nil {
 		return nil
@@ -269,7 +269,7 @@ func (c *DBConnection) ShardConnectionByID(id int64) (*DBShardConnection, error)
 	return connMap[dbConn], nil
 }
 
-// EqualDSN returns whether connection is same DSN conneciton that executed SQL previously or not.
+// EqualDSN returns whether connection is same DSN connection that executed SQL previously or not.
 func (c *DBConnection) EqualDSN(conn *DBConnection) bool {
 	if c == conn {
 		return true
