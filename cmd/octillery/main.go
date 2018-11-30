@@ -17,6 +17,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"unicode"
 
 	flags "github.com/jessevdk/go-flags"
 	vtparser "github.com/knocknote/vitess-sqlparser/sqlparser"
@@ -57,8 +58,9 @@ type TransposeCommand struct {
 
 // MigrateCommand type for migrate command
 type MigrateCommand struct {
-	DryRun bool   `long:"dry-run" description:"show diff only"`
-	Config string `long:"config" short:"c" description:"database configuration file path" required:"config path"`
+	DryRun bool   `long:"dry-run"           description:"show diff only"`
+	Quiet  bool   `long:"quiet"   short:"q" description:"not print logs during migration"`
+	Config string `long:"config"  short:"c" description:"database configuration file path" required:"config path"`
 }
 
 // ImportCommand type for import command
@@ -328,27 +330,35 @@ func (cmd *MigrateCommand) Execute(args []string) error {
 				}
 				fmt.Printf("[ %s ]\n\n", result.dsn)
 				for _, diff := range strings.Split(result.diff, ";") {
-					if diff == "" || diff == "\n" {
+					trimmedDiff := strings.TrimFunc(diff, func(r rune) bool {
+						return unicode.IsSpace(r)
+					})
+					if trimmedDiff == "" {
 						continue
 					}
-					fmt.Printf("%s", diff)
+					fmt.Printf("%s\n\n", trimmedDiff)
 				}
-				fmt.Printf("\n")
 			}
 		}
 	} else {
 		for _, result := range results {
-			fmt.Printf("[ %s ]\n\n", result.dsn)
+			if !cmd.Quiet {
+				fmt.Printf("[ %s ]\n\n", result.dsn)
+			}
 			for _, diff := range strings.Split(result.diff, ";") {
-				if diff == "" || diff == "\n" {
+				trimmedDiff := strings.TrimFunc(diff, func(r rune) bool {
+					return unicode.IsSpace(r)
+				})
+				if trimmedDiff == "" {
 					continue
 				}
-				fmt.Printf("%s", diff)
-				if _, err := result.conn.Exec(diff); err != nil {
+				if !cmd.Quiet {
+					fmt.Printf("%s\n\n", trimmedDiff)
+				}
+				if _, err := result.conn.Exec(trimmedDiff); err != nil {
 					return errors.WithStack(err)
 				}
 			}
-			fmt.Printf("\n")
 		}
 	}
 	return nil
