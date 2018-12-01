@@ -29,6 +29,7 @@ type QueryLog struct {
 	LastInsertID int64         `json:"lastInsertId"`
 }
 
+// Connection common interface for DBConnection and DBShardConnection
 type Connection interface {
 	DSN() string
 	Conn() *sql.DB
@@ -43,10 +44,12 @@ type DBShardConnection struct {
 	dsn        string
 }
 
+// DSN returns DSN for shard
 func (c *DBShardConnection) DSN() string {
 	return c.dsn
 }
 
+// Conn returns *sql.DB instance for shard
 func (c *DBShardConnection) Conn() *sql.DB {
 	return c.Connection
 }
@@ -160,14 +163,12 @@ func (c *TxConnection) Prepare(ctx context.Context, conn Connection, query strin
 		return nil, errors.WithStack(err)
 	}
 	tx := c.dsnToTx[conn.DSN()]
-	if ctx == nil {
-		stmt, err := tx.Prepare(query)
-		if err != nil {
-			return nil, errors.WithStack(err)
+	stmt, err := func() (*sql.Stmt, error) {
+		if ctx == nil {
+			return tx.Prepare(query)
 		}
-		return stmt, nil
-	}
-	stmt, err := tx.PrepareContext(ctx, query)
+		return tx.PrepareContext(ctx, query)
+	}()
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
@@ -186,36 +187,37 @@ func (c *TxConnection) Stmt(ctx context.Context, conn Connection, stmt *sql.Stmt
 	return tx.StmtContext(ctx, stmt), nil
 }
 
-// QueryRow executs `QueryRow` with transaction.
+// QueryRow executes `QueryRow` with transaction.
 func (c *TxConnection) QueryRow(ctx context.Context, conn Connection, query string, args ...interface{}) (*sql.Row, error) {
 	if err := c.beginIfNotInitialized(conn); err != nil {
 		return nil, errors.WithStack(err)
 	}
 	tx := c.dsnToTx[conn.DSN()]
-	if ctx == nil {
-		return tx.QueryRow(query, args...), nil
-	}
+	row := func() *sql.Row {
+		if ctx == nil {
+			return tx.QueryRow(query, args...)
+		}
+		return tx.QueryRowContext(ctx, query, args...)
+	}()
 	c.ReadQueries = append(c.ReadQueries, &QueryLog{
 		Query: query,
 		Args:  args,
 	})
-	return tx.QueryRowContext(ctx, query, args...), nil
+	return row, nil
 }
 
-// Query executs `Query` with transaction.
+// Query executes `Query` with transaction.
 func (c *TxConnection) Query(ctx context.Context, conn Connection, query string, args ...interface{}) (*sql.Rows, error) {
 	if err := c.beginIfNotInitialized(conn); err != nil {
 		return nil, errors.WithStack(err)
 	}
 	tx := c.dsnToTx[conn.DSN()]
-	if ctx == nil {
-		rows, err := tx.Query(query, args...)
-		if err != nil {
-			return nil, errors.WithStack(err)
+	rows, err := func() (*sql.Rows, error) {
+		if ctx == nil {
+			return tx.Query(query, args...)
 		}
-		return rows, nil
-	}
-	rows, err := tx.QueryContext(ctx, query, args...)
+		return tx.QueryContext(ctx, query, args...)
+	}()
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
@@ -226,7 +228,7 @@ func (c *TxConnection) Query(ctx context.Context, conn Connection, query string,
 	return rows, nil
 }
 
-// Exec executs `Exec` with transaction.
+// Exec executes `Exec` with transaction.
 func (c *TxConnection) Exec(ctx context.Context, conn Connection, query string, args ...interface{}) (sql.Result, error) {
 	if err := c.beginIfNotInitialized(conn); err != nil {
 		return nil, errors.WithStack(err)
@@ -296,7 +298,7 @@ func (c *TxConnection) Commit() error {
 	return nil
 }
 
-// Rollback executs `Rollback` with transaction.
+// Rollback executes `Rollback` with transaction.
 func (c *TxConnection) Rollback() error {
 	if c == nil {
 		return nil
@@ -316,6 +318,7 @@ func (c *TxConnection) Rollback() error {
 	return nil
 }
 
+// DSN returns DSN for not sharded database
 func (c *DBConnection) DSN() string {
 	cfg := c.Config
 	if len(cfg.Masters) > 0 {
@@ -324,6 +327,7 @@ func (c *DBConnection) DSN() string {
 	return fmt.Sprintf("%s", cfg.NameOrPath)
 }
 
+// Conn returns *sql.DB for not sharded database
 func (c *DBConnection) Conn() *sql.DB {
 	return c.Connection
 }
