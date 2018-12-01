@@ -282,18 +282,23 @@ func (c *TxConnection) Commit() error {
 		}
 	}()
 
+	errs := []string{}
 	for _, tx := range c.dsnToTx {
 		if err := tx.Commit(); err != nil {
 			failedWriteQueries = append(failedWriteQueries, c.txToWriteQueries[tx]...)
 			if committedWriteQueryNum > 0 {
 				// distributed transaction error
 				isCriticalError = true
+				errs = append(errs, err.Error())
 			} else {
 				return errors.WithStack(err)
 			}
 		} else {
 			committedWriteQueryNum += len(c.txToWriteQueries[tx])
 		}
+	}
+	if len(errs) > 0 {
+		return errors.New(strings.Join(errs, ":"))
 	}
 	return nil
 }
