@@ -15,12 +15,40 @@ import (
 	adap "go.knocknote.io/octillery/connection/adapter"
 )
 
+var (
+	globalConfig                     *config.Config
+	globalBeforeCommitCallback       func(*TxConnection, []*QueryLog) error
+	globalAfterCommitSuccessCallback func(*TxConnection)
+	globalAfterCommitFailureCallback func(*TxConnection, bool, []*QueryLog)
+)
+
+// QueryLog type for storing information of executed query
+type QueryLog struct {
+	Query        string        `json:"query"`
+	Args         []interface{} `json:"args"`
+	LastInsertID int64         `json:"lastInsertId"`
+}
+
+type Connection interface {
+	DSN() string
+	Conn() *sql.DB
+}
+
 // DBShardConnection has connection to sharded database.
 type DBShardConnection struct {
 	ShardName  string
 	Connection *sql.DB
 	Masters    []*sql.DB
 	Slaves     []*sql.DB
+	dsn        string
+}
+
+func (c *DBShardConnection) DSN() string {
+	return c.dsn
+}
+
+func (c *DBShardConnection) Conn() *sql.DB {
+	return c.Connection
 }
 
 // DBShardConnections has all DBShardConnection instances.
@@ -93,58 +121,53 @@ type DBConnection struct {
 
 // TxConnection manage transaction
 type TxConnection struct {
-	dbConn *DBConnection
-	tx     *sql.Tx
-	conn   *sql.DB
-	ctx    context.Context
-	opts   *sql.TxOptions
+	dsnToTx          map[string]*sql.Tx
+	txToWriteQueries map[*sql.Tx][]*QueryLog
+	ctx              context.Context
+	opts             *sql.TxOptions
+	WriteQueries     []*QueryLog
+	ReadQueries      []*QueryLog
 }
 
-// ValidateConnection validate whether connection is same DSN connection that executed SQL previously or not.
-func (c *TxConnection) ValidateConnection(conn *DBConnection) error {
-	if c.dbConn == nil {
+func (c *TxConnection) beginIfNotInitialized(conn Connection) error {
+	dsn := conn.DSN()
+	tx := c.dsnToTx[dsn]
+	if !globalConfig.DistributedTransaction {
+		entries := len(c.dsnToTx)
+		if entries > 0 && tx == nil {
+			return errors.New("transaction error. cannot access other database by same Tx instance")
+		}
+	}
+	if tx != nil {
 		return nil
 	}
-	if !c.dbConn.EqualDSN(conn) {
-		return errors.New("transaction error. cannot access other database by same Tx instance")
-	}
-	return nil
-}
-
-func (c *TxConnection) beginIfNotInitialized(conn *sql.DB) error {
-	if c.tx != nil {
-		return nil
-	}
-	if c.ctx != nil {
-		tx, err := conn.BeginTx(c.ctx, c.opts)
-		if err != nil {
-			return errors.WithStack(err)
+	newTx, err := func() (*sql.Tx, error) {
+		if c.ctx != nil {
+			return conn.Conn().BeginTx(c.ctx, c.opts)
 		}
-		c.tx = tx
-	} else {
-		tx, err := conn.Begin()
-		if err != nil {
-			return errors.WithStack(err)
-		}
-		c.tx = tx
+		return conn.Conn().Begin()
+	}()
+	if err != nil {
+		return errors.WithStack(err)
 	}
-	c.conn = conn
+	c.dsnToTx[dsn] = newTx
 	return nil
 }
 
 // Prepare executes `Prepare` with transaction.
-func (c *TxConnection) Prepare(ctx context.Context, conn *sql.DB, query string) (*sql.Stmt, error) {
+func (c *TxConnection) Prepare(ctx context.Context, conn Connection, query string) (*sql.Stmt, error) {
 	if err := c.beginIfNotInitialized(conn); err != nil {
 		return nil, errors.WithStack(err)
 	}
+	tx := c.dsnToTx[conn.DSN()]
 	if ctx == nil {
-		stmt, err := c.tx.Prepare(query)
+		stmt, err := tx.Prepare(query)
 		if err != nil {
 			return nil, errors.WithStack(err)
 		}
 		return stmt, nil
 	}
-	stmt, err := c.tx.PrepareContext(ctx, query)
+	stmt, err := tx.PrepareContext(ctx, query)
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
@@ -152,74 +175,125 @@ func (c *TxConnection) Prepare(ctx context.Context, conn *sql.DB, query string) 
 }
 
 // Stmt executes `Stmt` with transaction.
-func (c *TxConnection) Stmt(ctx context.Context, conn *sql.DB, stmt *sql.Stmt) (*sql.Stmt, error) {
+func (c *TxConnection) Stmt(ctx context.Context, conn Connection, stmt *sql.Stmt) (*sql.Stmt, error) {
 	if err := c.beginIfNotInitialized(conn); err != nil {
 		return nil, errors.WithStack(err)
 	}
+	tx := c.dsnToTx[conn.DSN()]
 	if ctx == nil {
-		return c.tx.Stmt(stmt), nil
+		return tx.Stmt(stmt), nil
 	}
-	return c.tx.StmtContext(ctx, stmt), nil
+	return tx.StmtContext(ctx, stmt), nil
 }
 
 // QueryRow executs `QueryRow` with transaction.
-func (c *TxConnection) QueryRow(ctx context.Context, conn *sql.DB, query string, args ...interface{}) (*sql.Row, error) {
+func (c *TxConnection) QueryRow(ctx context.Context, conn Connection, query string, args ...interface{}) (*sql.Row, error) {
 	if err := c.beginIfNotInitialized(conn); err != nil {
 		return nil, errors.WithStack(err)
 	}
+	tx := c.dsnToTx[conn.DSN()]
 	if ctx == nil {
-		return c.tx.QueryRow(query, args...), nil
+		return tx.QueryRow(query, args...), nil
 	}
-	return c.tx.QueryRowContext(ctx, query, args...), nil
+	c.ReadQueries = append(c.ReadQueries, &QueryLog{
+		Query: query,
+		Args:  args,
+	})
+	return tx.QueryRowContext(ctx, query, args...), nil
 }
 
 // Query executs `Query` with transaction.
-func (c *TxConnection) Query(ctx context.Context, conn *sql.DB, query string, args ...interface{}) (*sql.Rows, error) {
+func (c *TxConnection) Query(ctx context.Context, conn Connection, query string, args ...interface{}) (*sql.Rows, error) {
 	if err := c.beginIfNotInitialized(conn); err != nil {
 		return nil, errors.WithStack(err)
 	}
+	tx := c.dsnToTx[conn.DSN()]
 	if ctx == nil {
-		rows, err := c.tx.Query(query, args...)
+		rows, err := tx.Query(query, args...)
 		if err != nil {
 			return nil, errors.WithStack(err)
 		}
 		return rows, nil
 	}
-	rows, err := c.tx.QueryContext(ctx, query, args...)
+	rows, err := tx.QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
+	c.ReadQueries = append(c.ReadQueries, &QueryLog{
+		Query: query,
+		Args:  args,
+	})
 	return rows, nil
 }
 
 // Exec executs `Exec` with transaction.
-func (c *TxConnection) Exec(ctx context.Context, conn *sql.DB, query string, args ...interface{}) (sql.Result, error) {
+func (c *TxConnection) Exec(ctx context.Context, conn Connection, query string, args ...interface{}) (sql.Result, error) {
 	if err := c.beginIfNotInitialized(conn); err != nil {
 		return nil, errors.WithStack(err)
 	}
-	if ctx == nil {
-		result, err := c.tx.Exec(query, args...)
-		if err != nil {
-			return nil, errors.WithStack(err)
+	tx := c.dsnToTx[conn.DSN()]
+	result, err := func() (sql.Result, error) {
+		if ctx == nil {
+			return tx.Exec(query, args...)
 		}
-		return result, nil
-	}
-	result, err := c.tx.ExecContext(ctx, query, args...)
+		return tx.ExecContext(ctx, query, args...)
+	}()
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
+	id, err := result.LastInsertId()
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+	queryLog := &QueryLog{
+		Query:        query,
+		Args:         args,
+		LastInsertID: id,
+	}
+	c.txToWriteQueries[tx] = append(c.txToWriteQueries[tx], queryLog)
+	c.WriteQueries = append(c.WriteQueries, queryLog)
 	return result, nil
 }
 
-// Commit executs `Commit` with transaction.
+// Commit executes `Commit` with transaction.
 func (c *TxConnection) Commit() error {
 	if c == nil {
 		return errors.New("cannot commit. TxConnection is nil")
 	}
-	if c.tx == nil {
-		return errors.New("cannot commit. Tx is nil")
+	if len(c.dsnToTx) == 0 {
+		return nil
 	}
-	return errors.WithStack(c.tx.Commit())
+	if globalBeforeCommitCallback != nil {
+		if err := globalBeforeCommitCallback(c, c.WriteQueries); err != nil {
+			return errors.WithStack(err)
+		}
+	}
+	committedWriteQueryNum := 0
+	failedWriteQueries := []*QueryLog{}
+	isCriticalError := false
+
+	defer func() {
+		if len(failedWriteQueries) == 0 && globalAfterCommitSuccessCallback != nil {
+			globalAfterCommitSuccessCallback(c)
+		} else if len(failedWriteQueries) > 0 && globalAfterCommitFailureCallback != nil {
+			globalAfterCommitFailureCallback(c, isCriticalError, failedWriteQueries)
+		}
+	}()
+
+	for _, tx := range c.dsnToTx {
+		if err := tx.Commit(); err != nil {
+			failedWriteQueries = append(failedWriteQueries, c.txToWriteQueries[tx]...)
+			if committedWriteQueryNum > 0 {
+				// distributed transaction error
+				isCriticalError = true
+			} else {
+				return errors.WithStack(err)
+			}
+		} else {
+			committedWriteQueryNum += len(c.txToWriteQueries[tx])
+		}
+	}
+	return nil
 }
 
 // Rollback executs `Rollback` with transaction.
@@ -227,15 +301,36 @@ func (c *TxConnection) Rollback() error {
 	if c == nil {
 		return nil
 	}
-	if c.tx == nil {
+	if len(c.dsnToTx) == 0 {
 		return nil
 	}
-	return errors.WithStack(c.tx.Rollback())
+	errs := []string{}
+	for _, tx := range c.dsnToTx {
+		if err := tx.Rollback(); err != nil {
+			errs = append(errs, err.Error())
+		}
+	}
+	if len(errs) > 0 {
+		return errors.New(strings.Join(errs, ":"))
+	}
+	return nil
+}
+
+func (c *DBConnection) DSN() string {
+	cfg := c.Config
+	if len(cfg.Masters) > 0 {
+		return fmt.Sprintf("%s/%s", cfg.Masters[0], cfg.NameOrPath)
+	}
+	return fmt.Sprintf("%s", cfg.NameOrPath)
+}
+
+func (c *DBConnection) Conn() *sql.DB {
+	return c.Connection
 }
 
 // Begin creates TxConnection instance for transaction.
 func (c *DBConnection) Begin(ctx context.Context, opts *sql.TxOptions) *TxConnection {
-	return &TxConnection{dbConn: c, ctx: ctx, opts: opts}
+	return &TxConnection{ctx: ctx, opts: opts}
 }
 
 // NextSequenceID returns next unique id by sequencer table name.
@@ -637,8 +732,6 @@ func (cm *DBConnectionManager) openConnection(tableName string, table *config.Ta
 	return nil
 }
 
-var globalConfig *config.Config
-
 // NewConnectionManager creates instance of DBConnectionManager,
 // If call this before loads configuration file, it returns error.
 func NewConnectionManager() (*DBConnectionManager, error) {
@@ -656,6 +749,17 @@ func NewConnectionManager() (*DBConnectionManager, error) {
 func SetConfig(cfg *config.Config) error {
 	globalConfig = cfg
 	return errors.WithStack(setupDBFromConfig(cfg))
+}
+
+func SetBeforeCommitCallback(callback func(tx *TxConnection, writeQueries []*QueryLog) error) {
+	globalBeforeCommitCallback = callback
+}
+
+func SetAfterCommitCallback(
+	successCallback func(*TxConnection),
+	failureCallback func(*TxConnection, bool, []*QueryLog)) {
+	globalAfterCommitSuccessCallback = successCallback
+	globalAfterCommitFailureCallback = failureCallback
 }
 
 func setupDBFromConfig(config *config.Config) error {

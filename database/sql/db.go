@@ -13,13 +13,6 @@ import (
 	"go.knocknote.io/octillery/sqlparser"
 )
 
-// QueryLog type for storing information of executed query
-type QueryLog struct {
-	Query        string        `json:"query"`
-	Args         []interface{} `json:"args"`
-	LastInsertID int64         `json:"lastInsertId"`
-}
-
 // DB the compatible structure of DB in 'database/sql' package.
 type DB struct {
 	connMgr *connection.DBConnectionManager
@@ -170,12 +163,10 @@ func (db *DB) BeginTx(ctx context.Context, opts *TxOptions) (*Tx, error) {
 		}
 	}
 	return &Tx{
-		tx:           nil,
-		ctx:          ctx,
-		opts:         coreopts,
-		connMgr:      db.connMgr,
-		WriteQueries: []*QueryLog{},
-		ReadQueries:  []*QueryLog{},
+		tx:      nil,
+		ctx:     ctx,
+		opts:    coreopts,
+		connMgr: db.connMgr,
 	}, nil
 }
 
@@ -186,12 +177,10 @@ func (db *DB) Begin() (*Tx, error) {
 		return nil, errors.New("cannot get connection manager from sql.(*DB)")
 	}
 	return &Tx{
-		tx:           nil,
-		ctx:          nil,
-		opts:         nil,
-		connMgr:      db.connMgr,
-		WriteQueries: []*QueryLog{},
-		ReadQueries:  []*QueryLog{},
+		tx:      nil,
+		ctx:     nil,
+		opts:    nil,
+		connMgr: db.connMgr,
 	}, nil
 }
 

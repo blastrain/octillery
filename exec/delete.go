@@ -36,7 +36,7 @@ func (e *DeleteQueryExecutor) deleteShardTable(query *sqlparser.DeleteQuery) (sq
 	errs := []string{}
 	for _, shardConn := range e.conn.ShardConnections.AllShard() {
 		debug.Printf("(DB:%s):%s", shardConn.ShardName, query.Text)
-		result, err := e.exec(shardConn.Connection, query.Text, query.Args...)
+		result, err := e.exec(shardConn, query.Text, query.Args...)
 		if err != nil {
 			errs = append(errs, err.Error())
 			continue
@@ -86,7 +86,7 @@ func (e *DeleteQueryExecutor) Exec() (sql.Result, error) {
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
-	result, err := e.exec(shardConn.Connection, query.Text, query.Args...)
+	result, err := e.exec(shardConn, query.Text, query.Args...)
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}

@@ -3,7 +3,6 @@ package sql
 import (
 	"context"
 	core "database/sql"
-	"encoding/json"
 
 	"github.com/pkg/errors"
 	"go.knocknote.io/octillery/connection"
@@ -18,11 +17,16 @@ type Tx struct {
 	connMgr *connection.DBConnectionManager
 	ctx     context.Context
 	opts    *core.TxOptions
+}
 
-	// WriteQueries informations of executed INSERT/UPDATE/DELETE query
-	WriteQueries []*QueryLog
-	// ReadQueries informations of executed SELECT query
-	ReadQueries []*QueryLog
+// WriteQueries informations of executed INSERT/UPDATE/DELETE query
+func (proxy *Tx) WriteQueries() []*connection.QueryLog {
+	return proxy.tx.WriteQueries
+}
+
+// ReadQueries informations of executed SELECT query
+func (proxy *Tx) ReadQueries() []*connection.QueryLog {
+	return proxy.tx.ReadQueries
 }
 
 func (proxy *Tx) connectionAndQuery(queryText string, args ...interface{}) (*connection.DBConnection, sqlparser.Query, error) {
@@ -48,8 +52,6 @@ func (proxy *Tx) execProxy(ctx context.Context, queryText string, args ...interf
 	}
 	if proxy.tx == nil {
 		proxy.tx = conn.Begin(proxy.ctx, proxy.opts)
-	} else if err := proxy.tx.ValidateConnection(conn); err != nil {
-		return nil, errors.WithStack(err)
 	}
 	if conn.IsShard {
 		result, err := exec.NewQueryExecutor(ctx, conn, proxy.tx, query).Exec()
@@ -58,7 +60,7 @@ func (proxy *Tx) execProxy(ctx context.Context, queryText string, args ...interf
 		}
 		return result, nil
 	}
-	result, err := proxy.tx.Exec(ctx, conn.Connection, queryText, args...)
+	result, err := proxy.tx.Exec(ctx, conn, queryText, args...)
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
@@ -72,8 +74,6 @@ func (proxy *Tx) prepareProxy(ctx context.Context, queryText string) (*core.Stmt
 	}
 	if proxy.tx == nil {
 		proxy.tx = conn.Begin(proxy.ctx, proxy.opts)
-	} else if err := proxy.tx.ValidateConnection(conn); err != nil {
-		return nil, errors.WithStack(err)
 	}
 	if conn.IsShard {
 		stmt, err := exec.NewQueryExecutor(ctx, conn, proxy.tx, query).Prepare()
@@ -82,7 +82,7 @@ func (proxy *Tx) prepareProxy(ctx context.Context, queryText string) (*core.Stmt
 		}
 		return stmt, nil
 	}
-	stmt, err := proxy.tx.Prepare(ctx, conn.Connection, queryText)
+	stmt, err := proxy.tx.Prepare(ctx, conn, queryText)
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
@@ -99,8 +99,6 @@ func (proxy *Tx) stmtProxy(ctx context.Context, stmt *Stmt) (*core.Stmt, error) 
 	}
 	if proxy.tx == nil {
 		proxy.tx = conn.Begin(proxy.ctx, proxy.opts)
-	} else if err := proxy.tx.ValidateConnection(conn); err != nil {
-		return nil, errors.WithStack(err)
 	}
 	if conn.IsShard {
 		stmt, err := exec.NewQueryExecutor(ctx, conn, proxy.tx, query).Stmt()
@@ -109,7 +107,7 @@ func (proxy *Tx) stmtProxy(ctx context.Context, stmt *Stmt) (*core.Stmt, error) 
 		}
 		return stmt, nil
 	}
-	result, err := proxy.tx.Stmt(ctx, conn.Connection, stmt.core)
+	result, err := proxy.tx.Stmt(ctx, conn, stmt.core)
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
@@ -123,8 +121,6 @@ func (proxy *Tx) queryProxy(ctx context.Context, queryText string, args ...inter
 	}
 	if proxy.tx == nil {
 		proxy.tx = conn.Begin(proxy.ctx, proxy.opts)
-	} else if err := proxy.tx.ValidateConnection(conn); err != nil {
-		return nil, errors.WithStack(err)
 	}
 	if conn.IsShard {
 		rows, err := exec.NewQueryExecutor(ctx, conn, proxy.tx, query).Query()
@@ -134,7 +130,7 @@ func (proxy *Tx) queryProxy(ctx context.Context, queryText string, args ...inter
 		return &Rows{cores: rows}, nil
 	}
 
-	rows, err := proxy.tx.Query(ctx, conn.Connection, queryText, args...)
+	rows, err := proxy.tx.Query(ctx, conn, queryText, args...)
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
@@ -148,8 +144,6 @@ func (proxy *Tx) queryRowProxy(ctx context.Context, queryText string, args ...in
 	}
 	if proxy.tx == nil {
 		proxy.tx = conn.Begin(proxy.ctx, proxy.opts)
-	} else if err := proxy.tx.ValidateConnection(conn); err != nil {
-		return &Row{err: err}
 	}
 	if conn.IsShard {
 		row, err := exec.NewQueryExecutor(ctx, conn, proxy.tx, query).QueryRow()
@@ -158,26 +152,18 @@ func (proxy *Tx) queryRowProxy(ctx context.Context, queryText string, args ...in
 		}
 		return &Row{core: row}
 	}
-	row, err := proxy.tx.QueryRow(ctx, conn.Connection, queryText, args...)
+	row, err := proxy.tx.QueryRow(ctx, conn, queryText, args...)
 	if err != nil {
 		return &Row{err: err}
 	}
 	return &Row{core: row}
 }
 
-func (proxy *Tx) error(baseErr error) error {
-	bytes, err := json.Marshal(proxy.WriteQueries)
-	if err != nil {
-		return errors.Wrap(baseErr, err.Error())
-	}
-	return errors.Wrapf(baseErr, "queries = %s", string(bytes))
-}
-
 // Commit the compatible method of Commit in 'database/sql' package.
 func (proxy *Tx) Commit() error {
 	debug.Printf("Tx.Commit()")
 	if err := proxy.tx.Commit(); err != nil {
-		return proxy.error(errors.WithStack(err))
+		return errors.WithStack(err)
 	}
 	return nil
 }
@@ -186,7 +172,7 @@ func (proxy *Tx) Commit() error {
 func (proxy *Tx) Rollback() error {
 	debug.Printf("Tx.Rollback()")
 	if err := proxy.tx.Rollback(); err != nil {
-		return proxy.error(errors.WithStack(err))
+		return errors.WithStack(err)
 	}
 	return nil
 }
@@ -238,15 +224,6 @@ func (proxy *Tx) ExecContext(ctx context.Context, query string, args ...interfac
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
-	id, err := result.LastInsertId()
-	if err != nil {
-		return nil, errors.WithStack(err)
-	}
-	proxy.WriteQueries = append(proxy.WriteQueries, &QueryLog{
-		Query:        query,
-		Args:         args,
-		LastInsertID: id,
-	})
 	return result, nil
 }
 
@@ -257,15 +234,6 @@ func (proxy *Tx) Exec(query string, args ...interface{}) (Result, error) {
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
-	id, err := result.LastInsertId()
-	if err != nil {
-		return nil, errors.WithStack(err)
-	}
-	proxy.WriteQueries = append(proxy.WriteQueries, &QueryLog{
-		Query:        query,
-		Args:         args,
-		LastInsertID: id,
-	})
 	return result, nil
 }
 
@@ -276,10 +244,6 @@ func (proxy *Tx) QueryContext(ctx context.Context, query string, args ...interfa
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
-	proxy.ReadQueries = append(proxy.ReadQueries, &QueryLog{
-		Query: query,
-		Args:  args,
-	})
 	return rows, nil
 }
 
@@ -290,29 +254,17 @@ func (proxy *Tx) Query(query string, args ...interface{}) (*Rows, error) {
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
-	proxy.ReadQueries = append(proxy.ReadQueries, &QueryLog{
-		Query: query,
-		Args:  args,
-	})
 	return rows, nil
 }
 
 // QueryRowContext the compatible method of QueryRowContext in 'database/sql' package.
 func (proxy *Tx) QueryRowContext(ctx context.Context, query string, args ...interface{}) *Row {
 	debug.Printf("Tx.QueryRowContext: %s", query)
-	proxy.ReadQueries = append(proxy.ReadQueries, &QueryLog{
-		Query: query,
-		Args:  args,
-	})
 	return proxy.queryRowProxy(ctx, query, args...)
 }
 
 // QueryRow the compatible method of QueryRow in 'database/sql' package.
 func (proxy *Tx) QueryRow(query string, args ...interface{}) *Row {
 	debug.Printf("Tx.QueryRow: %s", query)
-	proxy.ReadQueries = append(proxy.ReadQueries, &QueryLog{
-		Query: query,
-		Args:  args,
-	})
 	return proxy.queryRowProxy(nil, query, args...)
 }

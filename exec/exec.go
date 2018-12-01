@@ -52,7 +52,7 @@ func (e *QueryExecutorBase) Stmt() (*sql.Stmt, error) {
 	return nil, errors.New("currently not supported Stmt() for sharding table")
 }
 
-func (e *QueryExecutorBase) exec(conn *sql.DB, query string, args ...interface{}) (sql.Result, error) {
+func (e *QueryExecutorBase) exec(conn connection.Connection, query string, args ...interface{}) (sql.Result, error) {
 	if e.tx != nil {
 		result, err := e.tx.Exec(e.ctx, conn, query, args...)
 		if err != nil {
@@ -62,23 +62,23 @@ func (e *QueryExecutorBase) exec(conn *sql.DB, query string, args ...interface{}
 	}
 
 	if e.ctx == nil {
-		return conn.Exec(query, args...)
+		return conn.Conn().Exec(query, args...)
 	}
-	return conn.ExecContext(e.ctx, query, args...)
+	return conn.Conn().ExecContext(e.ctx, query, args...)
 }
 
-func (e *QueryExecutorBase) execQuery(conn *sql.DB, query string, args ...interface{}) (*sql.Rows, error) {
+func (e *QueryExecutorBase) execQuery(conn connection.Connection, query string, args ...interface{}) (*sql.Rows, error) {
 	if e.tx != nil {
 		return e.tx.Query(e.ctx, conn, query, args...)
 	}
 
 	if e.ctx == nil {
-		return conn.Query(query, args...)
+		return conn.Conn().Query(query, args...)
 	}
-	return conn.QueryContext(e.ctx, query, args...)
+	return conn.Conn().QueryContext(e.ctx, query, args...)
 }
 
-func (e *QueryExecutorBase) execQueryRow(conn *sql.DB, query string, args ...interface{}) (*sql.Row, error) {
+func (e *QueryExecutorBase) execQueryRow(conn connection.Connection, query string, args ...interface{}) (*sql.Row, error) {
 	if e.tx != nil {
 		row, err := e.tx.QueryRow(e.ctx, conn, query, args...)
 		if err != nil {
@@ -88,9 +88,9 @@ func (e *QueryExecutorBase) execQueryRow(conn *sql.DB, query string, args ...int
 	}
 
 	if e.ctx == nil {
-		return conn.QueryRow(query, args...), nil
+		return conn.Conn().QueryRow(query, args...), nil
 	}
-	return conn.QueryRowContext(e.ctx, query, args...), nil
+	return conn.Conn().QueryRowContext(e.ctx, query, args...), nil
 }
 
 // NewQueryExecutor creates instance of QueryExecutor interface.

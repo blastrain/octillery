@@ -72,3 +72,13 @@ func Exec(db *osql.DB, queryText string) ([]*sql.Rows, sql.Result, error) {
 	result, err := conn.Connection.Exec(queryText)
 	return nil, result, errors.WithStack(err)
 }
+
+func BeforeCommitCallback(callback func(*connection.TxConnection, []*connection.QueryLog) error) {
+	connection.SetBeforeCommitCallback(callback)
+}
+
+func AfterCommitCallback(
+	successCallback func(*connection.TxConnection),
+	failureCallback func(*connection.TxConnection, bool, []*connection.QueryLog)) {
+	connection.SetAfterCommitCallback(successCallback, failureCallback)
+}
