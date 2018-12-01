@@ -114,7 +114,6 @@ func (cmd *TransposeCommand) Execute(args []string) error {
 }
 
 // Execute executes migrate command
-// nolint: gocyclo
 func (cmd *MigrateCommand) Execute(args []string) error {
 	if len(args) == 0 {
 		return errors.New("argument is required. it is path to directory includes schema file or direct path to schema file")
