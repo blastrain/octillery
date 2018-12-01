@@ -760,10 +760,14 @@ func SetConfig(cfg *config.Config) error {
 	return errors.WithStack(setupDBFromConfig(cfg))
 }
 
+// SetBeforeCommitCallback set function for it is callbacked before commit.
+// Function is set as internal global variable, so must be care possible about it is called by multiple threads.
 func SetBeforeCommitCallback(callback func(tx *TxConnection, writeQueries []*QueryLog) error) {
 	globalBeforeCommitCallback = callback
 }
 
+// SetAfterCommitCallback set function for it is callbacked after commit.
+// Function is set as internal global variable, so must be care possible about it is called by multiple threads.
 func SetAfterCommitCallback(
 	successCallback func(*TxConnection),
 	failureCallback func(*TxConnection, bool, []*QueryLog)) {
