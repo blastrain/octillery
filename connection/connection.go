@@ -339,7 +339,12 @@ func (c *DBConnection) Conn() *sql.DB {
 
 // Begin creates TxConnection instance for transaction.
 func (c *DBConnection) Begin(ctx context.Context, opts *sql.TxOptions) *TxConnection {
-	return &TxConnection{ctx: ctx, opts: opts}
+	return &TxConnection{
+		dsnToTx:          map[string]*sql.Tx{},
+		txToWriteQueries: map[*sql.Tx][]*QueryLog{},
+		ctx:              ctx,
+		opts:             opts,
+	}
 }
 
 // NextSequenceID returns next unique id by sequencer table name.

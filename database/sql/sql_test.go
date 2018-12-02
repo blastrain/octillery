@@ -176,6 +176,7 @@ func init() {
 	RegisterByOctillery("sqlite3", &TestDriver{})
 	confPath := filepath.Join(path.ThisDirPath(), "..", "..", "test_databases.yml")
 	cfg, err := config.Load(confPath)
+	cfg.DistributedTransaction = false
 	if err != nil {
 		panic(err)
 	}
@@ -811,9 +812,5 @@ func TestError(t *testing.T) {
 	testQueryContextTransactionError(t, tx)
 	testQueryRowTransactionError(t, tx)
 	testQueryRowContextTransactionError(t, tx)
-	t.Run("error commit", func(t *testing.T) {
-		if err := tx.Commit(); err == nil {
-			t.Fatal("cannot handle error")
-		}
-	})
+	checkErr(t, tx.Commit())
 }
