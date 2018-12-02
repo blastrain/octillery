@@ -469,21 +469,31 @@ func testTransactionQueryRowWithoutContext(t *testing.T, stmt *Stmt) {
 			t.Fatal("cannot scan")
 		}
 	})
+	t.Run("query without context", func(t *testing.T) {
+		if _, err := stmt.Query(1); err != nil {
+			t.Fatalf("%+v\n", err)
+		}
+	})
 }
 
-func testTransactionQueryRowWithContext(ctx context.Context, t *testing.T, stmt *Stmt) {
+func testTransactionQueryWithContext(ctx context.Context, t *testing.T, stmt *Stmt) {
+	var (
+		name  NullString
+		age   NullInt64
+		isGod NullBool
+		point NullFloat64
+	)
 	t.Run("query row with context", func(t *testing.T) {
-		var (
-			name  NullString
-			age   NullInt64
-			isGod NullBool
-			point NullFloat64
-		)
 		stmt.QueryRowContext(ctx, 1).Scan(&name, &age, &isGod, &point)
 		nameValue, err := name.Value()
 		checkErr(t, err)
 		if nameValue.(string) != "alice" {
 			t.Fatal("cannot scan")
+		}
+	})
+	t.Run("query with context", func(t *testing.T) {
+		if _, err := stmt.QueryContext(ctx, 1); err != nil {
+			t.Fatalf("%+v\n", err)
 		}
 	})
 }
@@ -501,9 +511,9 @@ func testTransactionWithNotShardingTable(ctx context.Context, t *testing.T, tx *
 		}
 		testTransactionStmtError(t, tx, stmt)
 		testTransactionQueryRowWithoutContext(t, stmt)
-		testTransactionQueryRowWithContext(ctx, t, stmt)
+		testTransactionQueryWithContext(ctx, t, stmt)
 		readQueries := tx.ReadQueries()
-		if len(readQueries) != 2 {
+		if len(readQueries) != 4 {
 			t.Fatal("cannot capture query")
 		}
 	})

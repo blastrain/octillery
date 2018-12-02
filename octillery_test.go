@@ -4,14 +4,28 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"log"
 	"path/filepath"
 	"testing"
 
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/pkg/errors"
+	"go.knocknote.io/octillery/connection"
 	osql "go.knocknote.io/octillery/database/sql"
 	"go.knocknote.io/octillery/path"
 )
+
+func init() {
+	BeforeCommitCallback(func(tx *connection.TxConnection, writeQueries []*connection.QueryLog) error {
+		log.Println("BeforeCommit", writeQueries)
+		return nil
+	})
+	AfterCommitCallback(func(*connection.TxConnection) {
+		log.Println("AfterCommit")
+	}, func(tx *connection.TxConnection, isCriticalError bool, failureQueries []*connection.QueryLog) {
+		log.Println("AfterCommit", failureQueries)
+	})
+}
 
 func checkErr(t *testing.T, err error) {
 	if err != nil {
