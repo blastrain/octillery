@@ -392,10 +392,16 @@ func TestDB(t *testing.T) {
 	if _, err := db.Exec("update users set name = 'alice' where id = 1"); err != nil {
 		t.Fatalf("%+v\n", err)
 	}
+	if _, err := db.Exec("update user_stages set name = 'alice' where id = 1"); err != nil {
+		t.Fatalf("%+v\n", err)
+	}
 	if _, err := db.QueryContext(ctx, "select * from users"); err != nil {
 		t.Fatalf("%+v\n", err)
 	}
 	if _, err := db.Query("select * from users"); err != nil {
+		t.Fatalf("%+v\n", err)
+	}
+	if _, err := db.Query("select * from user_stages"); err != nil {
 		t.Fatalf("%+v\n", err)
 	}
 	if row := db.QueryRowContext(ctx, "select * from users"); row == nil {
@@ -492,14 +498,14 @@ func testTransactionWithNotShardingTable(ctx context.Context, t *testing.T, tx *
 		}
 		if stmt := tx.Stmt(stmt); stmt == nil {
 			t.Fatalf("invalid stmt instance")
-		} else {
-			if _, err := stmt.Exec("update user_stages set name = 'alice'"); err != nil {
-				t.Fatalf("%+v\n", err)
-			}
 		}
 		testTransactionStmtError(t, tx, stmt)
 		testTransactionQueryRowWithoutContext(t, stmt)
 		testTransactionQueryRowWithContext(ctx, t, stmt)
+		readQueries := tx.ReadQueries()
+		if len(readQueries) != 2 {
+			t.Fatal("cannot capture query")
+		}
 	})
 	t.Run("exec", func(t *testing.T) {
 		stmt, err := tx.Prepare("update user_stages set name = 'bob' where id = ?")
@@ -513,6 +519,20 @@ func testTransactionWithNotShardingTable(ctx context.Context, t *testing.T, tx *
 			}
 			if _, err := result.RowsAffected(); err != nil {
 				t.Fatalf("%+v\n", err)
+			}
+			writeQueries := tx.WriteQueries()
+			if len(writeQueries) != 1 {
+				t.Fatal("cannot capture query")
+			}
+			writeQuery := writeQueries[0]
+			if writeQuery.Query != "update user_stages set name = 'bob' where id = ?" {
+				t.Fatal("cannot get query")
+			}
+			if len(writeQuery.Args) != 1 {
+				t.Fatal("invalid args")
+			}
+			if writeQuery.Args[0] != 1 {
+				t.Fatal("invalid args")
 			}
 		})
 		t.Run("exec with context", func(t *testing.T) {
@@ -540,6 +560,17 @@ func TestTransaction(t *testing.T) {
 		t.Run("not sharding table", func(t *testing.T) {
 			testTransactionWithNotShardingTable(ctx, t, tx)
 		})
+		t.Run("sharding table", func(t *testing.T) {
+			if _, err := tx.Prepare("select * from users where id = ?"); err == nil {
+				t.Fatal("cannot handle error")
+			}
+			tx, err := db.Begin()
+			checkErr(t, err)
+			stmt := tx.Stmt(&Stmt{query: "select * from users where id = ?"})
+			if _, err := stmt.Query(1); err == nil {
+				t.Fatal("cannot handle error")
+			}
+		})
 	})
 
 	// transaction error. cannot access other database by same Tx instance
@@ -552,19 +583,26 @@ func TestTransaction(t *testing.T) {
 	if _, err := tx.Exec("update user_stages set name = 'alice' where id = 1"); err != nil {
 		t.Fatalf("%+v\n", err)
 	}
-	if _, err := tx.QueryContext(ctx, "select * from user_stages"); err != nil {
-		t.Fatalf("%+v\n", err)
+	{
+		tx, err := db.Begin()
+		checkErr(t, err)
+		if _, err := tx.QueryContext(ctx, "select * from user_stages"); err != nil {
+			t.Fatalf("%+v\n", err)
+		}
+		if _, err := tx.Query("select * from user_stages"); err != nil {
+			t.Fatalf("%+v\n", err)
+		}
 	}
-	if _, err := tx.Query("select * from user_stages"); err != nil {
-		t.Fatalf("%+v\n", err)
+	{
+		tx, err := db.Begin()
+		checkErr(t, err)
+		if row := tx.QueryRowContext(ctx, "select * from user_stages"); row == nil {
+			t.Fatal("invalid row instance")
+		}
+		if row := tx.QueryRow("select * from user_stages"); row == nil {
+			t.Fatal("invalid row instance")
+		}
 	}
-	if row := tx.QueryRowContext(ctx, "select * from user_stages"); row == nil {
-		t.Fatal("invalid row instance")
-	}
-	if row := tx.QueryRow("select * from user_stages"); row == nil {
-		t.Fatal("invalid row instance")
-	}
-
 	checkErr(t, tx.Commit())
 
 	t.Run("rollback", func(t *testing.T) {
@@ -604,6 +642,11 @@ func testPrepareError(t *testing.T, db *DB) {
 			t.Fatal("cannot handle error")
 		}
 	})
+	t.Run("parse error", func(t *testing.T) {
+		if _, err := db.Prepare("invalid query"); err == nil {
+			t.Fatal("cannot handle error")
+		}
+	})
 }
 
 func testPrepareContextError(t *testing.T, db *DB) {
@@ -625,6 +668,11 @@ func testExecError(t *testing.T, db *DB) {
 			t.Fatalf("%+v\n", err)
 		}
 		if result != nil {
+			t.Fatal("cannot handle error")
+		}
+	})
+	t.Run("parse error", func(t *testing.T) {
+		if _, err := db.Exec("invalid query"); err == nil {
 			t.Fatal("cannot handle error")
 		}
 	})
@@ -652,6 +700,11 @@ func testQueryError(t *testing.T, db *DB) {
 			t.Fatal("cannot handle error")
 		}
 	})
+	t.Run("parse error", func(t *testing.T) {
+		if _, err := db.Query("invalid query"); err == nil {
+			t.Fatal("cannot handle error")
+		}
+	})
 }
 
 func testQueryContextError(t *testing.T, db *DB) {
@@ -674,6 +727,13 @@ func testQueryRowError(t *testing.T, db *DB) {
 			t.Fatalf("%+v\n", err)
 		}
 	})
+	t.Run("parse error", func(t *testing.T) {
+		row := db.QueryRow("invalid query")
+		var name string
+		if err := row.Scan(&name); err == nil {
+			t.Fatal("cannot handle error")
+		}
+	})
 }
 
 func testQueryRowContextError(t *testing.T, db *DB) {
@@ -693,6 +753,11 @@ func testPrepareTransactionError(t *testing.T, tx *Tx) {
 			t.Fatalf("%+v\n", err)
 		}
 		if stmt != nil {
+			t.Fatal("cannot handle error")
+		}
+	})
+	t.Run("parse error", func(t *testing.T) {
+		if _, err := tx.Prepare("invalid query"); err == nil {
 			t.Fatal("cannot handle error")
 		}
 	})
@@ -720,6 +785,11 @@ func testExecTransactionError(t *testing.T, tx *Tx) {
 			t.Fatal("cannot handle error")
 		}
 	})
+	t.Run("parse error", func(t *testing.T) {
+		if _, err := tx.Exec("invalid query"); err == nil {
+			t.Fatal("cannot handle error")
+		}
+	})
 }
 
 func testExecContextTransactionError(t *testing.T, tx *Tx) {
@@ -744,6 +814,11 @@ func testQueryTransactionError(t *testing.T, tx *Tx) {
 			t.Fatal("cannot handle error")
 		}
 	})
+	t.Run("parse error", func(t *testing.T) {
+		if _, err := tx.Query("invalid query"); err == nil {
+			t.Fatal("cannot handle error")
+		}
+	})
 }
 
 func testQueryContextTransactionError(t *testing.T, tx *Tx) {
@@ -764,6 +839,13 @@ func testQueryRowTransactionError(t *testing.T, tx *Tx) {
 		var name string
 		if err := row.Scan(&name); errors.Cause(err) != errOpen {
 			t.Fatalf("%+v\n", err)
+		}
+	})
+	t.Run("parse error", func(t *testing.T) {
+		row := tx.QueryRow("invalid query")
+		var name string
+		if err := row.Scan(&name); err == nil {
+			t.Fatal("cannot handle error")
 		}
 	})
 }
@@ -791,8 +873,20 @@ func TestError(t *testing.T) {
 			t.Fatal("cannot handle error")
 		}
 	})
+	{
+		db := &DB{}
+		if _, err := db.Begin(); err == nil {
+			t.Fatal("cannot handle error")
+		}
+		if _, err := db.BeginTx(nil, nil); err == nil {
+			t.Fatal("cannot handle error")
+		}
+	}
 	db, err := Open("", "")
 	checkErr(t, err)
+	if db.Driver() != nil {
+		t.Fatal("cannot hook sql.Open")
+	}
 	testPrepareError(t, db)
 	testPrepareContextError(t, db)
 	testExecError(t, db)
@@ -804,6 +898,15 @@ func TestError(t *testing.T) {
 
 	tx, err := db.Begin()
 	checkErr(t, err)
+	t.Run("invalid table name", func(t *testing.T) {
+		if _, err := db.Query("select * from invalid_table"); err == nil {
+			t.Fatal("cannot handle error")
+		}
+		if _, err := tx.Query("select * from invalid_table"); err == nil {
+			t.Fatal("cannot handle error")
+		}
+	})
+
 	testPrepareTransactionError(t, tx)
 	testPrepareContextTransactionError(t, tx)
 	testExecTransactionError(t, tx)

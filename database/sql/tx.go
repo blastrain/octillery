@@ -67,10 +67,10 @@ func (proxy *Tx) execProxy(ctx context.Context, queryText string, args ...interf
 	return result, nil
 }
 
-func (proxy *Tx) prepareProxy(ctx context.Context, queryText string) (*core.Stmt, error) {
+func (proxy *Tx) prepareProxy(ctx context.Context, queryText string) (*core.Stmt, connection.Connection, error) {
 	conn, query, err := proxy.connectionAndQuery(queryText)
 	if err != nil {
-		return nil, errors.WithStack(err)
+		return nil, nil, errors.WithStack(err)
 	}
 	if proxy.tx == nil {
 		proxy.tx = conn.Begin(proxy.ctx, proxy.opts)
@@ -78,24 +78,24 @@ func (proxy *Tx) prepareProxy(ctx context.Context, queryText string) (*core.Stmt
 	if conn.IsShard {
 		stmt, err := exec.NewQueryExecutor(ctx, conn, proxy.tx, query).Prepare()
 		if err != nil {
-			return nil, errors.WithStack(err)
+			return nil, nil, errors.WithStack(err)
 		}
-		return stmt, nil
+		return stmt, conn, nil
 	}
 	stmt, err := proxy.tx.Prepare(ctx, conn, queryText)
 	if err != nil {
-		return nil, errors.WithStack(err)
+		return nil, nil, errors.WithStack(err)
 	}
-	return stmt, nil
+	return stmt, conn, nil
 }
 
-func (proxy *Tx) stmtProxy(ctx context.Context, stmt *Stmt) (*core.Stmt, error) {
+func (proxy *Tx) stmtProxy(ctx context.Context, stmt *Stmt) (*core.Stmt, connection.Connection, error) {
 	if stmt == nil {
-		return nil, errors.New("invalid stmt")
+		return nil, nil, errors.New("invalid stmt")
 	}
 	conn, query, err := proxy.connectionAndQuery(stmt.query)
 	if err != nil {
-		return nil, errors.WithStack(err)
+		return nil, nil, errors.WithStack(err)
 	}
 	if proxy.tx == nil {
 		proxy.tx = conn.Begin(proxy.ctx, proxy.opts)
@@ -103,15 +103,15 @@ func (proxy *Tx) stmtProxy(ctx context.Context, stmt *Stmt) (*core.Stmt, error) 
 	if conn.IsShard {
 		stmt, err := exec.NewQueryExecutor(ctx, conn, proxy.tx, query).Stmt()
 		if err != nil {
-			return nil, errors.WithStack(err)
+			return nil, nil, errors.WithStack(err)
 		}
-		return stmt, nil
+		return stmt, conn, nil
 	}
 	result, err := proxy.tx.Stmt(ctx, conn, stmt.core)
 	if err != nil {
-		return nil, errors.WithStack(err)
+		return nil, nil, errors.WithStack(err)
 	}
-	return result, nil
+	return result, conn, nil
 }
 
 func (proxy *Tx) queryProxy(ctx context.Context, queryText string, args ...interface{}) (*Rows, error) {
@@ -180,41 +180,61 @@ func (proxy *Tx) Rollback() error {
 // PrepareContext the compatible method of PrepareContext in 'database/sql' package.
 func (proxy *Tx) PrepareContext(ctx context.Context, query string) (*Stmt, error) {
 	debug.Printf("Tx.PrepareContext: %s", query)
-	stmt, err := proxy.prepareProxy(ctx, query)
+	stmt, conn, err := proxy.prepareProxy(ctx, query)
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
-	return &Stmt{core: stmt, query: query}, nil
+	return &Stmt{
+		core:  stmt,
+		query: query,
+		tx:    proxy.tx,
+		conn:  conn,
+	}, nil
 }
 
 // Prepare the compatible method of Prepare in 'database/sql' package.
 func (proxy *Tx) Prepare(query string) (*Stmt, error) {
 	debug.Printf("Tx.Prepare: %s", query)
-	stmt, err := proxy.prepareProxy(nil, query)
+	stmt, conn, err := proxy.prepareProxy(nil, query)
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
-	return &Stmt{core: stmt, query: query}, nil
+	return &Stmt{
+		core:  stmt,
+		query: query,
+		tx:    proxy.tx,
+		conn:  conn,
+	}, nil
 }
 
 // StmtContext the compatible method of StmtContext in 'database/sql' package.
 func (proxy *Tx) StmtContext(ctx context.Context, stmt *Stmt) *Stmt {
 	debug.Printf("Tx.StmtContext")
-	result, err := proxy.stmtProxy(ctx, stmt)
+	result, conn, err := proxy.stmtProxy(ctx, stmt)
 	if err != nil {
 		return &Stmt{err: err}
 	}
-	return &Stmt{core: result, query: stmt.query}
+	return &Stmt{
+		core:  result,
+		query: stmt.query,
+		tx:    proxy.tx,
+		conn:  conn,
+	}
 }
 
 // Stmt the compatible method of Stmt in 'database/sql' package.
 func (proxy *Tx) Stmt(stmt *Stmt) *Stmt {
 	debug.Printf("Tx.Stmt")
-	result, err := proxy.stmtProxy(nil, stmt)
+	result, conn, err := proxy.stmtProxy(nil, stmt)
 	if err != nil {
 		return &Stmt{err: err}
 	}
-	return &Stmt{core: result, query: stmt.query}
+	return &Stmt{
+		core:  result,
+		query: stmt.query,
+		tx:    proxy.tx,
+		conn:  conn,
+	}
 }
 
 // ExecContext the compatible method of ExecContext in 'database/sql' package.

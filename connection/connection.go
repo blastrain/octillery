@@ -175,6 +175,29 @@ func (c *TxConnection) Prepare(ctx context.Context, conn Connection, query strin
 	return stmt, nil
 }
 
+func (c *TxConnection) AddWriteQuery(conn Connection, result sql.Result, query string, args ...interface{}) error {
+	id, err := result.LastInsertId()
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	queryLog := &QueryLog{
+		Query:        query,
+		Args:         args,
+		LastInsertID: id,
+	}
+	tx := c.dsnToTx[conn.DSN()]
+	c.txToWriteQueries[tx] = append(c.txToWriteQueries[tx], queryLog)
+	c.WriteQueries = append(c.WriteQueries, queryLog)
+	return nil
+}
+
+func (c *TxConnection) AddReadQuery(query string, args ...interface{}) {
+	c.ReadQueries = append(c.ReadQueries, &QueryLog{
+		Query: query,
+		Args:  args,
+	})
+}
+
 // Stmt executes `Stmt` with transaction.
 func (c *TxConnection) Stmt(ctx context.Context, conn Connection, stmt *sql.Stmt) (*sql.Stmt, error) {
 	if err := c.beginIfNotInitialized(conn); err != nil {
