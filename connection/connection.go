@@ -124,6 +124,7 @@ type DBConnection struct {
 
 // TxConnection manage transaction
 type TxConnection struct {
+	dsnList          []string
 	dsnToTx          map[string]*sql.Tx
 	txToWriteQueries map[*sql.Tx][]*QueryLog
 	ctx              context.Context
@@ -153,6 +154,7 @@ func (c *TxConnection) beginIfNotInitialized(conn Connection) error {
 	if err != nil {
 		return errors.WithStack(err)
 	}
+	c.dsnList = append(c.dsnList, dsn)
 	c.dsnToTx[dsn] = newTx
 	return nil
 }
@@ -306,13 +308,14 @@ func (c *TxConnection) Commit() error {
 	}()
 
 	errs := []string{}
-	for _, tx := range c.dsnToTx {
+	for _, dsn := range c.dsnList {
+		tx := c.dsnToTx[dsn]
 		if err := tx.Commit(); err != nil {
 			failedWriteQueries = append(failedWriteQueries, c.txToWriteQueries[tx]...)
 			if committedWriteQueryNum > 0 {
 				// distributed transaction error
 				isCriticalError = true
-				errs = append(errs, err.Error())
+				errs = append(errs, errors.Wrapf(err, "cannot commit to %s", dsn).Error())
 			} else {
 				return errors.WithStack(err)
 			}
@@ -363,6 +366,7 @@ func (c *DBConnection) Conn() *sql.DB {
 // Begin creates TxConnection instance for transaction.
 func (c *DBConnection) Begin(ctx context.Context, opts *sql.TxOptions) *TxConnection {
 	return &TxConnection{
+		dsnList:          []string{},
 		dsnToTx:          map[string]*sql.Tx{},
 		txToWriteQueries: map[*sql.Tx][]*QueryLog{},
 		ctx:              ctx,

@@ -3,6 +3,7 @@ package octillery
 import (
 	"fmt"
 	"log"
+	"os"
 	"path/filepath"
 	"testing"
 
@@ -12,15 +13,6 @@ import (
 )
 
 func init() {
-	BeforeCommitCallback(func(tx *connection.TxConnection, writeQueries []*connection.QueryLog) error {
-		log.Println("BeforeCommit", writeQueries)
-		return nil
-	})
-	AfterCommitCallback(func(*connection.TxConnection) {
-		log.Println("AfterCommit")
-	}, func(tx *connection.TxConnection, isCriticalError bool, failureQueries []*connection.QueryLog) {
-		log.Println("AfterCommit", failureQueries)
-	})
 }
 
 func insertToUsers(tx *sql.Tx, t *testing.T) {
@@ -71,7 +63,7 @@ func insertToUserStages(tx *sql.Tx, t *testing.T) {
 	log.Println("inserted user_stages.id = ", id)
 }
 
-func TestDistributedTransaction(t *testing.T) {
+func initializeTables(t *testing.T) {
 	if err := LoadConfig(filepath.Join(path.ThisDirPath(), "test_databases.yml")); err != nil {
 		t.Fatalf("%+v\n", err)
 	}
@@ -112,17 +104,80 @@ CREATE TABLE IF NOT EXISTS user_stages(
 )`); err != nil {
 		t.Fatalf("%+v\n", err)
 	}
-	tx, err := db.Begin()
-	if err != nil {
-		t.Fatalf("%+v\n", err)
-	}
+}
 
+func insertRecords(tx *sql.Tx, t *testing.T) {
 	insertToUsers(tx, t)
 	insertToUserItems(tx, t)
 	insertToUserDecks(tx, t)
 	insertToUserStages(tx, t)
+}
 
+func TestDistributedTransaction(t *testing.T) {
+	initializeTables(t)
+	db, err := sql.Open("", "")
+	if err != nil {
+		t.Fatalf("%+v\n", err)
+	}
+	tx, err := db.Begin()
+	if err != nil {
+		t.Fatalf("%+v\n", err)
+	}
+	insertRecords(tx, t)
+	BeforeCommitCallback(func(tx *connection.TxConnection, writeQueries []*connection.QueryLog) error {
+		if len(writeQueries) != 4 {
+			t.Fatal("cannot capture write queries")
+		}
+		return nil
+	})
+	AfterCommitCallback(func(*connection.TxConnection) {
+	}, func(tx *connection.TxConnection, isCriticalError bool, failureQueries []*connection.QueryLog) {
+		t.Fatal("cannot commit")
+	})
 	if err := tx.Commit(); err != nil {
 		t.Fatalf("%+v\n", err)
+	}
+}
+
+func TestDistributedTransactionError(t *testing.T) {
+	initializeTables(t)
+	db, err := sql.Open("", "")
+	if err != nil {
+		t.Fatalf("%+v\n", err)
+	}
+	tx, err := db.Begin()
+	if err != nil {
+		t.Fatalf("%+v\n", err)
+	}
+	insertRecords(tx, t)
+	BeforeCommitCallback(func(tx *connection.TxConnection, writeQueries []*connection.QueryLog) error {
+		if len(writeQueries) != 4 {
+			t.Fatal("cannot capture write queries")
+		}
+		return nil
+	})
+	AfterCommitCallback(func(*connection.TxConnection) {
+		t.Fatal("cannot handle error")
+	}, func(tx *connection.TxConnection, isCriticalError bool, failureQueries []*connection.QueryLog) {
+		if !isCriticalError {
+			t.Fatal("cannot handle critical error")
+		}
+		if len(failureQueries) != 1 {
+			t.Fatal("cannot capture failure query")
+		}
+		if failureQueries[0].Query != "INSERT INTO user_stages(id, user_id) values (null, 10)" {
+			t.Fatal("cannot capture failure query")
+		}
+		if failureQueries[0].LastInsertID != 1 {
+			t.Fatal("cannot capture failure query")
+		}
+	})
+	if err := os.Remove("/tmp/user_stage.bin-journal"); err != nil {
+		t.Fatalf("%+v\n", err)
+	}
+	if err := tx.Commit(); err == nil {
+		t.Fatal("cannot handle error")
+	} else {
+		log.Println(err)
 	}
 }
