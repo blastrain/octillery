@@ -724,9 +724,16 @@ func (cm *DBConnectionManager) openShardConnection(tableName string, table *conf
 			}
 			cm.setConnectionSettings(shardConn)
 			conns = append(conns, shardConn)
+			var dsn string
+			if len(shardValue.Masters) > 0 {
+				dsn = fmt.Sprintf("%s/%s", shardValue.Masters[0], shardValue.NameOrPath)
+			} else {
+				dsn = shardValue.NameOrPath
+			}
 			shardConns.addConnection(&DBShardConnection{
 				ShardName:  shardName,
 				Connection: shardConn,
+				dsn:        dsn,
 			})
 		}
 	}
