@@ -15,7 +15,7 @@ import (
 func init() {
 }
 
-func insertToUsers(tx *sql.Tx, t *testing.T) {
+func insertToUsers(tx *sql.Tx, t *testing.T) int64 {
 	result, err := tx.Exec("INSERT INTO users(id, name) VALUES (null, 'alice')")
 	if err != nil {
 		t.Fatalf("%+v\n", err)
@@ -24,10 +24,10 @@ func insertToUsers(tx *sql.Tx, t *testing.T) {
 	if err != nil {
 		t.Fatalf("%+v\n", err)
 	}
-	log.Println("inserted users.id = ", id)
+	return id
 }
 
-func insertToUserItems(tx *sql.Tx, t *testing.T) {
+func insertToUserItems(tx *sql.Tx, t *testing.T) int64 {
 	result, err := tx.Exec("INSERT INTO user_items(id, user_id) VALUES (null, 10)")
 	if err != nil {
 		t.Fatalf("%+v\n", err)
@@ -36,10 +36,10 @@ func insertToUserItems(tx *sql.Tx, t *testing.T) {
 	if err != nil {
 		t.Fatalf("%+v\n", err)
 	}
-	log.Println("inserted user_items.id = ", id)
+	return id
 }
 
-func insertToUserDecks(tx *sql.Tx, t *testing.T) {
+func insertToUserDecks(tx *sql.Tx, t *testing.T) int64 {
 	result, err := tx.Exec("INSERT INTO user_decks(id, user_id) values (null, 10)")
 	if err != nil {
 		t.Fatalf("%+v\n", err)
@@ -48,10 +48,10 @@ func insertToUserDecks(tx *sql.Tx, t *testing.T) {
 	if err != nil {
 		t.Fatalf("%+v\n", err)
 	}
-	log.Println("inserted user_decks.id = ", id)
+	return id
 }
 
-func insertToUserStages(tx *sql.Tx, t *testing.T) {
+func insertToUserStages(tx *sql.Tx, t *testing.T) int64 {
 	result, err := tx.Exec("INSERT INTO user_stages(id, user_id) values (null, 10)")
 	if err != nil {
 		t.Fatalf("%+v\n", err)
@@ -60,7 +60,7 @@ func insertToUserStages(tx *sql.Tx, t *testing.T) {
 	if err != nil {
 		t.Fatalf("%+v\n", err)
 	}
-	log.Println("inserted user_stages.id = ", id)
+	return id
 }
 
 func initializeTables(t *testing.T) {
@@ -139,7 +139,54 @@ func TestDistributedTransaction(t *testing.T) {
 	}
 }
 
-func TestDistributedTransactionError(t *testing.T) {
+func TestDistributedTransactionNormalError(t *testing.T) {
+	initializeTables(t)
+	db, err := sql.Open("", "")
+	if err != nil {
+		t.Fatalf("%+v\n", err)
+	}
+	tx, err := db.Begin()
+	if err != nil {
+		t.Fatalf("%+v\n", err)
+	}
+	id := insertToUsers(tx, t)
+	insertToUserItems(tx, t)
+	insertToUserDecks(tx, t)
+	insertToUserStages(tx, t)
+	BeforeCommitCallback(func(tx *connection.TxConnection, writeQueries []*connection.QueryLog) error {
+		if len(writeQueries) != 4 {
+			t.Fatal("cannot capture write queries")
+		}
+		return nil
+	})
+	AfterCommitCallback(func(*connection.TxConnection) {
+		t.Fatal("cannot handle error")
+	}, func(tx *connection.TxConnection, isCriticalError bool, failureQueries []*connection.QueryLog) {
+		if isCriticalError {
+			t.Fatal("cannot handle critical error")
+		}
+		if len(failureQueries) != 1 {
+			t.Fatal("cannot capture failure query")
+		}
+		if failureQueries[0].Query != fmt.Sprintf("insert into users(id, name) values (%d, 'alice')", id) {
+			t.Fatal("cannot capture failure query")
+		}
+		if failureQueries[0].LastInsertID != id {
+			t.Fatal("cannot capture failure query")
+		}
+	})
+	os.Remove("/tmp/user_shard_1.bin-journal")
+	os.Remove("/tmp/user_shard_2.bin-journal")
+	// Fail first commit to users table, in this case critical error will not occur.
+	if err := tx.Commit(); err == nil {
+		t.Fatal("cannot handle error")
+	} else {
+		tx.Rollback()
+		log.Println(err)
+	}
+}
+
+func TestDistributedTransactionCriticalError(t *testing.T) {
 	initializeTables(t)
 	db, err := sql.Open("", "")
 	if err != nil {
@@ -178,6 +225,7 @@ func TestDistributedTransactionError(t *testing.T) {
 	if err := tx.Commit(); err == nil {
 		t.Fatal("cannot handle error")
 	} else {
+		tx.Rollback()
 		log.Println(err)
 	}
 }

@@ -317,7 +317,7 @@ func (c *TxConnection) Commit() error {
 				isCriticalError = true
 				errs = append(errs, errors.Wrapf(err, "cannot commit to %s", dsn).Error())
 			} else {
-				return errors.WithStack(err)
+				return errors.Wrapf(err, "cannot commit to %s", dsn)
 			}
 		} else {
 			committedWriteQueryNum += len(c.txToWriteQueries[tx])
