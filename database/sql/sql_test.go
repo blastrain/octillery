@@ -640,6 +640,72 @@ func TestTransaction(t *testing.T) {
 	})
 }
 
+func TestExecWithQueryLog(t *testing.T) {
+	db, err := Open("", "")
+	checkErr(t, err)
+	{
+		tx, err := db.Begin()
+		checkErr(t, err)
+		if _, err := tx.ExecWithQueryLog(&connection.QueryLog{
+			Query: "invalid query",
+		}); err == nil {
+			t.Fatal("cannot handle error")
+		}
+	}
+	{
+		tx, err := db.Begin()
+		checkErr(t, err)
+		if _, err := tx.ExecWithQueryLog(&connection.QueryLog{
+			Query: "DELETE FROM invalid_table WHERE id = 1",
+		}); err == nil {
+			t.Fatal("cannot handle error")
+		}
+	}
+	{
+		tx, err := db.Begin()
+		checkErr(t, err)
+		if _, err := tx.ExecWithQueryLog(&connection.QueryLog{
+			Query: "SELECT * FROM user_stages WHERE id = 1",
+		}); err == nil {
+			t.Fatal("cannot handle error")
+		}
+	}
+	{
+		tx, err := db.Begin()
+		checkErr(t, err)
+		if _, err := tx.ExecWithQueryLog(&connection.QueryLog{
+			Query:        "INSERT INTO user_stages(user_id) VALUES (10)",
+			LastInsertID: 1,
+		}); err != nil {
+			t.Fatalf("%+v\n", err)
+		}
+		checkErr(t, tx.Rollback())
+	}
+	{
+		tx, err := db.Begin()
+		checkErr(t, err)
+		if _, err := tx.ExecWithQueryLog(&connection.QueryLog{
+			Query:        "INSERT INTO user_items(user_id) VALUES (10)",
+			LastInsertID: 1,
+		}); err != nil {
+			t.Fatalf("%+v\n", err)
+		}
+		checkErr(t, tx.Rollback())
+	}
+	{
+		tx, err := db.Begin()
+		checkErr(t, err)
+		if _, err := tx.ExecWithQueryLog(&connection.QueryLog{
+			Query: "DELETE FROM user_stages WHERE user_id = ?",
+			Args:  []interface{}{10},
+		}); err != nil {
+			t.Fatalf("%+v\n", err)
+		}
+		checkErr(t, tx.Rollback())
+	}
+
+}
+
 var errOpen = errors.New("open error")
 
 func testPrepareError(t *testing.T, db *DB) {

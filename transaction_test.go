@@ -52,7 +52,7 @@ func insertToUserDecks(tx *sql.Tx, t *testing.T) int64 {
 }
 
 func insertToUserStages(tx *sql.Tx, t *testing.T) int64 {
-	result, err := tx.Exec("INSERT INTO user_stages(id, user_id) values (null, 10)")
+	result, err := tx.Exec("INSERT INTO user_stages(user_id) values (10)")
 	if err != nil {
 		t.Fatalf("%+v\n", err)
 	}
@@ -212,13 +212,34 @@ func TestDistributedTransactionCriticalError(t *testing.T) {
 		if len(failureQueries) != 1 {
 			t.Fatal("cannot capture failure query")
 		}
-		if failureQueries[0].Query != "INSERT INTO user_stages(id, user_id) values (null, 10)" {
+		if failureQueries[0].Query != "INSERT INTO user_stages(user_id) values (10)" {
 			t.Fatal("cannot capture failure query")
 		}
 		if failureQueries[0].LastInsertID != 1 {
 			t.Fatal("cannot capture failure query")
 		}
+		failureQuery := failureQueries[0]
+		initializeTables(t)
+		// recovery from critical error
+		newTx, err := db.Begin()
+		if err != nil {
+			t.Fatalf("%+v\n", err)
+		}
+		result, err := newTx.ExecWithQueryLog(failureQuery)
+		if err != nil {
+			t.Fatalf("%+v\n", err)
+		}
+		lastInsertID, err := result.LastInsertId()
+		if err != nil {
+			t.Fatalf("%+v\n", err)
+		}
+		if lastInsertID != 1 {
+			t.Fatal("cannot recovery query")
+		}
 	})
+	if err := os.Remove("/tmp/user_stage.bin"); err != nil {
+		t.Fatalf("%+v\n", err)
+	}
 	if err := os.Remove("/tmp/user_stage.bin-journal"); err != nil {
 		t.Fatalf("%+v\n", err)
 	}
