@@ -19,7 +19,7 @@ import (
 )
 
 // Version is the variable for versioning Octillery
-const Version = "v1.0.0"
+const Version = "v1.1.0"
 
 // LoadConfig load your database configuration file.
 //
