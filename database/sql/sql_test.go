@@ -560,6 +560,11 @@ func testTransactionWithNotShardingTable(ctx context.Context, t *testing.T, tx *
 
 func testTransactionRollback(t *testing.T) {
 	t.Run("rollback", func(t *testing.T) {
+		db, err := Open("sqlite3", "?parseTime=true&loc=Asia%2FTokyo")
+		checkErr(t, err)
+		defer db.Close()
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
 		tx, err := db.Begin()
 		checkErr(t, err)
 		if _, err := tx.ExecContext(ctx, "update users set name = 'alice' where id = 1"); err != nil {
