@@ -558,6 +558,32 @@ func testTransactionWithNotShardingTable(ctx context.Context, t *testing.T, tx *
 	})
 }
 
+func testTransactionRollback(t *testing.T) {
+	t.Run("rollback", func(t *testing.T) {
+		tx, err := db.Begin()
+		checkErr(t, err)
+		if _, err := tx.ExecContext(ctx, "update users set name = 'alice' where id = 1"); err != nil {
+			t.Fatalf("%+v\n", err)
+		}
+		if _, err := tx.Exec("update users set name = 'alice' where id = 1"); err != nil {
+			t.Fatalf("%+v\n", err)
+		}
+		if _, err := tx.QueryContext(ctx, "select * from users"); err != nil {
+			t.Fatalf("%+v\n", err)
+		}
+		if _, err := tx.Query("select * from users"); err != nil {
+			t.Fatalf("%+v\n", err)
+		}
+		if row := tx.QueryRowContext(ctx, "select * from users"); row == nil {
+			t.Fatal("invalid row instance")
+		}
+		if row := tx.QueryRow("select * from users"); row == nil {
+			t.Fatal("invalid row instance")
+		}
+		checkErr(t, tx.Rollback())
+	})
+}
+
 func TestTransaction(t *testing.T) {
 	db, err := Open("sqlite3", "?parseTime=true&loc=Asia%2FTokyo")
 	checkErr(t, err)
@@ -614,30 +640,7 @@ func TestTransaction(t *testing.T) {
 		}
 	}
 	checkErr(t, tx.Commit())
-
-	t.Run("rollback", func(t *testing.T) {
-		tx, err := db.Begin()
-		checkErr(t, err)
-		if _, err := tx.ExecContext(ctx, "update users set name = 'alice' where id = 1"); err != nil {
-			t.Fatalf("%+v\n", err)
-		}
-		if _, err := tx.Exec("update users set name = 'alice' where id = 1"); err != nil {
-			t.Fatalf("%+v\n", err)
-		}
-		if _, err := tx.QueryContext(ctx, "select * from users"); err != nil {
-			t.Fatalf("%+v\n", err)
-		}
-		if _, err := tx.Query("select * from users"); err != nil {
-			t.Fatalf("%+v\n", err)
-		}
-		if row := tx.QueryRowContext(ctx, "select * from users"); row == nil {
-			t.Fatal("invalid row instance")
-		}
-		if row := tx.QueryRow("select * from users"); row == nil {
-			t.Fatal("invalid row instance")
-		}
-		checkErr(t, tx.Rollback())
-	})
+	testTransactionRollback(t)
 }
 
 func TestExecWithQueryLog(t *testing.T) {
@@ -686,6 +689,38 @@ func TestExecWithQueryLog(t *testing.T) {
 		checkErr(t, err)
 		if _, err := tx.ExecWithQueryLog(&connection.QueryLog{
 			Query:        "INSERT INTO user_items(user_id) VALUES (10)",
+			LastInsertID: 1,
+		}); err != nil {
+			t.Fatalf("%+v\n", err)
+		}
+		checkErr(t, tx.Rollback())
+	}
+	{
+		tx, err := db.Begin()
+		checkErr(t, err)
+		if _, err := tx.ExecWithQueryLog(&connection.QueryLog{
+			Query: "INSERT INTO user_items(id, user_id) VALUES (1, 10)",
+		}); err != nil {
+			t.Fatalf("%+v\n", err)
+		}
+		checkErr(t, tx.Rollback())
+	}
+	{
+		tx, err := db.Begin()
+		checkErr(t, err)
+		if _, err := tx.ExecWithQueryLog(&connection.QueryLog{
+			Query:        "INSERT INTO user_items(id, user_id) VALUES (null, 20)",
+			LastInsertID: 1,
+		}); err != nil {
+			t.Fatalf("%+v\n", err)
+		}
+		checkErr(t, tx.Rollback())
+	}
+	{
+		tx, err := db.Begin()
+		checkErr(t, err)
+		if _, err := tx.ExecWithQueryLog(&connection.QueryLog{
+			Query:        "INSERT INTO user_items(id, user_id) VALUES (?, 30)",
 			LastInsertID: 1,
 		}); err != nil {
 			t.Fatalf("%+v\n", err)

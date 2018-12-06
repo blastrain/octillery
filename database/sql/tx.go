@@ -292,16 +292,20 @@ func (proxy *Tx) QueryRow(query string, args ...interface{}) *Row {
 }
 
 func (proxy *Tx) replaceInsertQueryByQueryLog(log *connection.QueryLog, query *sqlparser.InsertQuery) error {
+	if log.LastInsertID == 0 {
+		return nil
+	}
 	stmt := query.Stmt
-	foundIDColumn := false
-	for _, column := range stmt.Columns {
+	foundIDColumnIndex := -1
+	for idx, column := range stmt.Columns {
 		if column.String() == "id" {
-			foundIDColumn = true
+			foundIDColumnIndex = idx
 			break
 		}
 	}
-	if foundIDColumn {
-
+	if foundIDColumnIndex >= 0 {
+		val := vtparser.NewIntVal([]byte(fmt.Sprint(log.LastInsertID)))
+		stmt.Rows.(vtparser.Values)[0][foundIDColumnIndex] = val
 	} else {
 		columns := vtparser.Columns{}
 		columns = append(columns, vtparser.NewColIdent("id"))
@@ -320,6 +324,8 @@ func (proxy *Tx) replaceInsertQueryByQueryLog(log *connection.QueryLog, query *s
 	return nil
 }
 
+// ExecWithQueryLog exec query by *connection.QueryLog.
+// This is able to use for recovery from distributed transaction error.
 func (proxy *Tx) ExecWithQueryLog(log *connection.QueryLog) (Result, error) {
 	parser, err := sqlparser.New()
 	if err != nil {
