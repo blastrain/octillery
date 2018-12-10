@@ -4,7 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"database/sql/driver"
-	"log"
 	"path/filepath"
 	"testing"
 	"time"
@@ -130,15 +129,6 @@ func checkErr(t *testing.T, err error) {
 }
 
 func init() {
-	SetBeforeCommitCallback(func(tx *TxConnection, writeQueries []*QueryLog) error {
-		log.Println("BeforeCommit", writeQueries)
-		return nil
-	})
-	SetAfterCommitCallback(func(*TxConnection) {
-		log.Println("AfterCommit")
-	}, func(tx *TxConnection, isCriticalError bool, failureQueries []*QueryLog) {
-		log.Println("AfterCommit", failureQueries)
-	})
 	adapter.Register("sqlite3", &TestAdapter{})
 	sql.Register("sqlite3", &TestDriver{})
 	confPath := filepath.Join(path.ThisDirPath(), "..", "test_databases.yml")

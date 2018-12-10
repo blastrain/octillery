@@ -10,20 +10,21 @@ import (
 
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/pkg/errors"
-	"go.knocknote.io/octillery/connection"
 	osql "go.knocknote.io/octillery/database/sql"
 	"go.knocknote.io/octillery/path"
 )
 
 func init() {
-	BeforeCommitCallback(func(tx *connection.TxConnection, writeQueries []*connection.QueryLog) error {
+	BeforeCommitCallback(func(tx *osql.Tx, writeQueries []*osql.QueryLog) error {
 		log.Println("BeforeCommit", writeQueries)
 		return nil
 	})
-	AfterCommitCallback(func(*connection.TxConnection) {
+	AfterCommitCallback(func(*osql.Tx) error {
 		log.Println("AfterCommit")
-	}, func(tx *connection.TxConnection, isCriticalError bool, failureQueries []*connection.QueryLog) {
+		return nil
+	}, func(tx *osql.Tx, isCriticalError bool, failureQueries []*osql.QueryLog) error {
 		log.Println("AfterCommit", failureQueries)
+		return nil
 	})
 }
 

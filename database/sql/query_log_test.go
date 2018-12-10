@@ -3,7 +3,6 @@ package sql
 import (
 	"testing"
 
-	"go.knocknote.io/octillery/connection"
 	"go.knocknote.io/octillery/sqlparser"
 )
 
@@ -12,7 +11,7 @@ func TestGetParsedQueryByQueryLog(t *testing.T) {
 	checkErr(t, err)
 	tx, err := db.Begin()
 	checkErr(t, err)
-	if _, err := tx.GetParsedQueryByQueryLog(&connection.QueryLog{
+	if _, err := tx.GetParsedQueryByQueryLog(&QueryLog{
 		Query: "invalid query",
 	}); err == nil {
 		t.Fatal("cannot handle error")
@@ -24,7 +23,7 @@ func TestConvertWriteQueryIntoCountQuery(t *testing.T) {
 	checkErr(t, err)
 	tx, err := db.Begin()
 	checkErr(t, err)
-	readQuery, err := tx.GetParsedQueryByQueryLog(&connection.QueryLog{
+	readQuery, err := tx.GetParsedQueryByQueryLog(&QueryLog{
 		Query: "SELECT * FROM user_stages",
 	})
 	checkErr(t, err)
@@ -39,7 +38,7 @@ func TestConvertInsertQueryIntoCountQuery(t *testing.T) {
 	{
 		tx, err := db.Begin()
 		checkErr(t, err)
-		queryLog := &connection.QueryLog{
+		queryLog := &QueryLog{
 			Query:        "INSERT INTO user_stages(user_id, name, age) VALUES (10, ?, ?)",
 			Args:         []interface{}{"alice", 5},
 			LastInsertID: 1,
@@ -59,7 +58,7 @@ func TestConvertInsertQueryIntoCountQuery(t *testing.T) {
 	{
 		tx, err := db.Begin()
 		checkErr(t, err)
-		queryLog := &connection.QueryLog{
+		queryLog := &QueryLog{
 			Query:        "INSERT INTO users(id) VALUES (?)",
 			LastInsertID: 1,
 		}
@@ -78,7 +77,7 @@ func TestConvertInsertQueryIntoCountQuery(t *testing.T) {
 	{
 		tx, err := db.Begin()
 		checkErr(t, err)
-		queryLog := &connection.QueryLog{
+		queryLog := &QueryLog{
 			Query:        "INSERT INTO user_items(id, user_id, name) VALUES (null, 10, 'alice')",
 			LastInsertID: 2,
 		}
@@ -102,7 +101,7 @@ func TestConvertUpdateQueryIntoCountQuery(t *testing.T) {
 	{
 		tx, err := db.Begin()
 		checkErr(t, err)
-		queryLog := &connection.QueryLog{
+		queryLog := &QueryLog{
 			Query: "UPDATE user_stages set name = ?, age = 5 where user_id = ?",
 			Args:  []interface{}{"alice", 10},
 		}
@@ -123,7 +122,7 @@ func TestConvertDeleteQueryIntoCountQuery(t *testing.T) {
 	{
 		tx, err := db.Begin()
 		checkErr(t, err)
-		queryLog := &connection.QueryLog{
+		queryLog := &QueryLog{
 			Query: "DELETE from user_stages WHERE id = ? AND user_id = ?",
 			Args:  []interface{}{1, 10},
 		}
@@ -144,7 +143,7 @@ func TestExecWithQueryLog(t *testing.T) {
 	{
 		tx, err := db.Begin()
 		checkErr(t, err)
-		if _, err := tx.ExecWithQueryLog(&connection.QueryLog{
+		if _, err := tx.ExecWithQueryLog(&QueryLog{
 			Query: "invalid query",
 		}); err == nil {
 			t.Fatal("cannot handle error")
@@ -153,7 +152,7 @@ func TestExecWithQueryLog(t *testing.T) {
 	{
 		tx, err := db.Begin()
 		checkErr(t, err)
-		if _, err := tx.ExecWithQueryLog(&connection.QueryLog{
+		if _, err := tx.ExecWithQueryLog(&QueryLog{
 			Query: "DELETE FROM invalid_table WHERE id = 1",
 		}); err == nil {
 			t.Fatal("cannot handle error")
@@ -162,7 +161,7 @@ func TestExecWithQueryLog(t *testing.T) {
 	{
 		tx, err := db.Begin()
 		checkErr(t, err)
-		if _, err := tx.ExecWithQueryLog(&connection.QueryLog{
+		if _, err := tx.ExecWithQueryLog(&QueryLog{
 			Query: "SELECT * FROM user_stages WHERE id = 1",
 		}); err == nil {
 			t.Fatal("cannot handle error")
@@ -171,7 +170,7 @@ func TestExecWithQueryLog(t *testing.T) {
 	{
 		tx, err := db.Begin()
 		checkErr(t, err)
-		if _, err := tx.ExecWithQueryLog(&connection.QueryLog{
+		if _, err := tx.ExecWithQueryLog(&QueryLog{
 			Query:        "INSERT INTO user_stages(user_id) VALUES (10)",
 			LastInsertID: 1,
 		}); err != nil {
@@ -182,7 +181,7 @@ func TestExecWithQueryLog(t *testing.T) {
 	{
 		tx, err := db.Begin()
 		checkErr(t, err)
-		if _, err := tx.ExecWithQueryLog(&connection.QueryLog{
+		if _, err := tx.ExecWithQueryLog(&QueryLog{
 			Query:        "INSERT INTO user_items(user_id) VALUES (10)",
 			LastInsertID: 1,
 		}); err != nil {
@@ -193,7 +192,7 @@ func TestExecWithQueryLog(t *testing.T) {
 	{
 		tx, err := db.Begin()
 		checkErr(t, err)
-		if _, err := tx.ExecWithQueryLog(&connection.QueryLog{
+		if _, err := tx.ExecWithQueryLog(&QueryLog{
 			Query: "INSERT INTO user_items(id, user_id) VALUES (1, 10)",
 		}); err != nil {
 			t.Fatalf("%+v\n", err)
@@ -203,7 +202,7 @@ func TestExecWithQueryLog(t *testing.T) {
 	{
 		tx, err := db.Begin()
 		checkErr(t, err)
-		if _, err := tx.ExecWithQueryLog(&connection.QueryLog{
+		if _, err := tx.ExecWithQueryLog(&QueryLog{
 			Query:        "INSERT INTO user_items(id, user_id) VALUES (null, 20)",
 			LastInsertID: 1,
 		}); err != nil {
@@ -214,7 +213,7 @@ func TestExecWithQueryLog(t *testing.T) {
 	{
 		tx, err := db.Begin()
 		checkErr(t, err)
-		if _, err := tx.ExecWithQueryLog(&connection.QueryLog{
+		if _, err := tx.ExecWithQueryLog(&QueryLog{
 			Query:        "INSERT INTO user_items(id, user_id) VALUES (?, 30)",
 			LastInsertID: 1,
 		}); err != nil {
@@ -225,7 +224,7 @@ func TestExecWithQueryLog(t *testing.T) {
 	{
 		tx, err := db.Begin()
 		checkErr(t, err)
-		if _, err := tx.ExecWithQueryLog(&connection.QueryLog{
+		if _, err := tx.ExecWithQueryLog(&QueryLog{
 			Query: "DELETE FROM user_stages WHERE user_id = ?",
 			Args:  []interface{}{10},
 		}); err != nil {
@@ -241,25 +240,25 @@ func TestIsAlreadyCommittedQueryLog(t *testing.T) {
 	tx, err := db.Begin()
 	checkErr(t, err)
 	// call only
-	if _, err := tx.IsAlreadyCommittedQueryLog(&connection.QueryLog{
+	if _, err := tx.IsAlreadyCommittedQueryLog(&QueryLog{
 		Query: "invalid query",
 	}); err == nil {
 		t.Fatal("cannot handle error")
 	}
-	if _, err := tx.IsAlreadyCommittedQueryLog(&connection.QueryLog{
+	if _, err := tx.IsAlreadyCommittedQueryLog(&QueryLog{
 		Query: "SELECT * FROM users",
 	}); err == nil {
 		t.Fatal("cannot handle error")
 	}
-	tx.IsAlreadyCommittedQueryLog(&connection.QueryLog{
+	tx.IsAlreadyCommittedQueryLog(&QueryLog{
 		Query: "invalid query",
 	})
 
-	tx.IsAlreadyCommittedQueryLog(&connection.QueryLog{
+	tx.IsAlreadyCommittedQueryLog(&QueryLog{
 		Query: "DELETE FROM user_stages WHERE user_id = ?",
 		Args:  []interface{}{10},
 	})
-	tx.IsAlreadyCommittedQueryLog(&connection.QueryLog{
+	tx.IsAlreadyCommittedQueryLog(&QueryLog{
 		Query: "DELETE FROM users WHERE id = 10",
 	})
 }

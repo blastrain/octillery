@@ -4,6 +4,7 @@ import (
 	"context"
 	core "database/sql"
 	"io"
+	"log"
 	"path/filepath"
 	"reflect"
 	"regexp"
@@ -183,6 +184,17 @@ func init() {
 	if err := connection.SetConfig(cfg); err != nil {
 		panic(err)
 	}
+	SetBeforeCommitCallback(func(tx *Tx, writeQueries []*QueryLog) error {
+		log.Println("BeforeCommit", writeQueries)
+		return nil
+	})
+	SetAfterCommitCallback(func(*Tx) error {
+		log.Println("AfterCommit")
+		return nil
+	}, func(tx *Tx, isCriticalError bool, failureQueries []*QueryLog) error {
+		log.Println("AfterCommit", failureQueries)
+		return nil
+	})
 }
 
 func TestNamedValue(t *testing.T) {

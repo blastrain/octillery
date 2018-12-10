@@ -11,12 +11,60 @@ import (
 	"go.knocknote.io/octillery/sqlparser"
 )
 
+var (
+	globalBeforeCommitCallback       = func(*Tx, []*QueryLog) error { return nil }
+	globalAfterCommitSuccessCallback = func(*Tx) error { return nil }
+	globalAfterCommitFailureCallback = func(*Tx, bool, []*QueryLog) error { return nil }
+)
+
+// QueryLog type for storing information of executed query
+type QueryLog struct {
+	Query        string        `json:"query"`
+	Args         []interface{} `json:"args"`
+	LastInsertID int64         `json:"lastInsertId"`
+}
+
+// SetBeforeCommitCallback set function for it is callbacked before commit.
+// Function is set as internal global variable, so must be care possible about it is called by multiple threads.
+func SetBeforeCommitCallback(callback func(tx *Tx, writeQueries []*QueryLog) error) {
+	if callback == nil {
+		return
+	}
+	globalBeforeCommitCallback = callback
+}
+
+// SetAfterCommitCallback set function for it is callbacked after commit.
+// Function is set as internal global variable, so must be care possible about it is called by multiple threads.
+func SetAfterCommitCallback(
+	successCallback func(*Tx) error,
+	failureCallback func(*Tx, bool, []*QueryLog) error) {
+	if successCallback == nil || failureCallback == nil {
+		return
+	}
+	globalAfterCommitSuccessCallback = successCallback
+	globalAfterCommitFailureCallback = failureCallback
+}
+
 // Tx the compatible type of Tx in 'database/sql' package.
 type Tx struct {
-	tx      *connection.TxConnection
-	connMgr *connection.DBConnectionManager
-	ctx     context.Context
-	opts    *core.TxOptions
+	tx                         *connection.TxConnection
+	connMgr                    *connection.DBConnectionManager
+	ctx                        context.Context
+	opts                       *core.TxOptions
+	beforeCommitCallback       func([]*QueryLog) error
+	afterCommitSuccessCallback func() error
+	afterCommitFailureCallback func(bool, []*QueryLog) error
+}
+
+// BeforeCommitCallback set callback function for before commit
+func (proxy *Tx) BeforeCommitCallback(callback func([]*QueryLog) error) {
+	proxy.beforeCommitCallback = callback
+}
+
+// AfterCommitCallback set callback function for after commit
+func (proxy *Tx) AfterCommitCallback(success func() error, failure func(bool, []*QueryLog) error) {
+	proxy.afterCommitSuccessCallback = success
+	proxy.afterCommitFailureCallback = failure
 }
 
 // WriteQueries informations of executed INSERT/UPDATE/DELETE query
@@ -45,14 +93,40 @@ func (proxy *Tx) connectionAndQuery(queryText string, args ...interface{}) (*con
 	return conn, query, nil
 }
 
+func (proxy *Tx) convertQueryLogs(connQueries []*connection.QueryLog) []*QueryLog {
+	queries := []*QueryLog{}
+	for _, query := range connQueries {
+		queries = append(queries, &QueryLog{
+			Query:        query.Query,
+			Args:         query.Args,
+			LastInsertID: query.LastInsertID,
+		})
+	}
+	return queries
+}
+
+func (proxy *Tx) begin(conn *connection.DBConnection) {
+	if proxy.tx != nil {
+		return
+	}
+	tx := conn.Begin(proxy.ctx, proxy.opts)
+	proxy.BeforeCommitCallback(func(writeQueries []*QueryLog) error {
+		return errors.WithStack(globalBeforeCommitCallback(proxy, writeQueries))
+	})
+	proxy.AfterCommitCallback(func() error {
+		return errors.WithStack(globalAfterCommitSuccessCallback(proxy))
+	}, func(isCritical bool, failureQueries []*QueryLog) error {
+		return errors.WithStack(globalAfterCommitFailureCallback(proxy, isCritical, failureQueries))
+	})
+	proxy.tx = tx
+}
+
 func (proxy *Tx) execProxy(ctx context.Context, queryText string, args ...interface{}) (Result, error) {
 	conn, query, err := proxy.connectionAndQuery(queryText, args...)
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
-	if proxy.tx == nil {
-		proxy.tx = conn.Begin(proxy.ctx, proxy.opts)
-	}
+	proxy.begin(conn)
 	if conn.IsShard {
 		result, err := exec.NewQueryExecutor(ctx, conn, proxy.tx, query).Exec()
 		if err != nil {
@@ -72,9 +146,7 @@ func (proxy *Tx) prepareProxy(ctx context.Context, queryText string) (*core.Stmt
 	if err != nil {
 		return nil, nil, errors.WithStack(err)
 	}
-	if proxy.tx == nil {
-		proxy.tx = conn.Begin(proxy.ctx, proxy.opts)
-	}
+	proxy.begin(conn)
 	if conn.IsShard {
 		stmt, err := exec.NewQueryExecutor(ctx, conn, proxy.tx, query).Prepare()
 		if err != nil {
@@ -97,9 +169,7 @@ func (proxy *Tx) stmtProxy(ctx context.Context, stmt *Stmt) (*core.Stmt, connect
 	if err != nil {
 		return nil, nil, errors.WithStack(err)
 	}
-	if proxy.tx == nil {
-		proxy.tx = conn.Begin(proxy.ctx, proxy.opts)
-	}
+	proxy.begin(conn)
 	if conn.IsShard {
 		stmt, err := exec.NewQueryExecutor(ctx, conn, proxy.tx, query).Stmt()
 		if err != nil {
@@ -119,9 +189,7 @@ func (proxy *Tx) queryProxy(ctx context.Context, queryText string, args ...inter
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
-	if proxy.tx == nil {
-		proxy.tx = conn.Begin(proxy.ctx, proxy.opts)
-	}
+	proxy.begin(conn)
 	if conn.IsShard {
 		rows, err := exec.NewQueryExecutor(ctx, conn, proxy.tx, query).Query()
 		if err != nil {
@@ -142,9 +210,7 @@ func (proxy *Tx) queryRowProxy(ctx context.Context, queryText string, args ...in
 	if err != nil {
 		return &Row{err: err}
 	}
-	if proxy.tx == nil {
-		proxy.tx = conn.Begin(proxy.ctx, proxy.opts)
-	}
+	proxy.begin(conn)
 	if conn.IsShard {
 		row, err := exec.NewQueryExecutor(ctx, conn, proxy.tx, query).QueryRow()
 		if err != nil {
@@ -162,6 +228,20 @@ func (proxy *Tx) queryRowProxy(ctx context.Context, queryText string, args ...in
 // Commit the compatible method of Commit in 'database/sql' package.
 func (proxy *Tx) Commit() error {
 	debug.Printf("Tx.Commit()")
+	if proxy.tx == nil {
+		return nil
+	}
+	proxy.tx.BeforeCommitCallback = func() error {
+		queries := proxy.convertQueryLogs(proxy.tx.WriteQueries)
+		return errors.WithStack(proxy.beforeCommitCallback(queries))
+	}
+	proxy.tx.AfterCommitSuccessCallback = func() error {
+		return errors.WithStack(proxy.afterCommitSuccessCallback())
+	}
+	proxy.tx.AfterCommitFailureCallback = func(isCriticalError bool, failureQueries []*connection.QueryLog) error {
+		queries := proxy.convertQueryLogs(failureQueries)
+		return errors.WithStack(proxy.afterCommitFailureCallback(isCriticalError, queries))
+	}
 	if err := proxy.tx.Commit(); err != nil {
 		return errors.WithStack(err)
 	}

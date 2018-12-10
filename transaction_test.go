@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"go.knocknote.io/octillery/connection"
+	"github.com/pkg/errors"
 	"go.knocknote.io/octillery/database/sql"
 	"go.knocknote.io/octillery/path"
 )
@@ -127,15 +127,17 @@ func TestDistributedTransaction(t *testing.T) {
 		t.Fatalf("%+v\n", err)
 	}
 	insertRecords(tx, t)
-	BeforeCommitCallback(func(tx *connection.TxConnection, writeQueries []*connection.QueryLog) error {
+	BeforeCommitCallback(func(tx *sql.Tx, writeQueries []*sql.QueryLog) error {
 		if len(writeQueries) != 4 {
 			t.Fatal("cannot capture write queries")
 		}
 		return nil
 	})
-	AfterCommitCallback(func(*connection.TxConnection) {
-	}, func(tx *connection.TxConnection, isCriticalError bool, failureQueries []*connection.QueryLog) {
+	AfterCommitCallback(func(*sql.Tx) error {
+		return nil
+	}, func(tx *sql.Tx, isCriticalError bool, failureQueries []*sql.QueryLog) error {
 		t.Fatal("cannot commit")
+		return nil
 	})
 	if err := tx.Commit(); err != nil {
 		t.Fatalf("%+v\n", err)
@@ -156,15 +158,16 @@ func TestDistributedTransactionNormalError(t *testing.T) {
 	insertToUserItems(tx, t)
 	insertToUserDecks(tx, t)
 	insertToUserStages(tx, t)
-	BeforeCommitCallback(func(tx *connection.TxConnection, writeQueries []*connection.QueryLog) error {
+	BeforeCommitCallback(func(tx *sql.Tx, writeQueries []*sql.QueryLog) error {
 		if len(writeQueries) != 4 {
 			t.Fatal("cannot capture write queries")
 		}
 		return nil
 	})
-	AfterCommitCallback(func(*connection.TxConnection) {
+	AfterCommitCallback(func(*sql.Tx) error {
 		t.Fatal("cannot handle error")
-	}, func(tx *connection.TxConnection, isCriticalError bool, failureQueries []*connection.QueryLog) {
+		return nil
+	}, func(tx *sql.Tx, isCriticalError bool, failureQueries []*sql.QueryLog) error {
 		if isCriticalError {
 			t.Fatal("cannot handle critical error")
 		}
@@ -177,6 +180,7 @@ func TestDistributedTransactionNormalError(t *testing.T) {
 		if failureQueries[0].LastInsertID != id {
 			t.Fatal("cannot capture failure query")
 		}
+		return nil
 	})
 	os.Remove("/tmp/user_shard_1.bin-journal")
 	os.Remove("/tmp/user_shard_2.bin-journal")
@@ -200,15 +204,16 @@ func TestDistributedTransactionCriticalError(t *testing.T) {
 		t.Fatalf("%+v\n", err)
 	}
 	insertRecords(tx, t)
-	BeforeCommitCallback(func(tx *connection.TxConnection, writeQueries []*connection.QueryLog) error {
+	BeforeCommitCallback(func(tx *sql.Tx, writeQueries []*sql.QueryLog) error {
 		if len(writeQueries) != 4 {
 			t.Fatal("cannot capture write queries")
 		}
 		return nil
 	})
-	AfterCommitCallback(func(*connection.TxConnection) {
+	AfterCommitCallback(func(*sql.Tx) error {
 		t.Fatal("cannot handle error")
-	}, func(tx *connection.TxConnection, isCriticalError bool, failureQueries []*connection.QueryLog) {
+		return nil
+	}, func(tx *sql.Tx, isCriticalError bool, failureQueries []*sql.QueryLog) error {
 		if !isCriticalError {
 			t.Fatal("cannot handle critical error")
 		}
@@ -242,6 +247,7 @@ func TestDistributedTransactionCriticalError(t *testing.T) {
 		if err := newTx.Rollback(); err != nil {
 			t.Fatalf("%+v\n", err)
 		}
+		return nil
 	})
 	if err := os.Remove("/tmp/user_stage.bin"); err != nil {
 		t.Fatalf("%+v\n", err)
@@ -257,7 +263,64 @@ func TestDistributedTransactionCriticalError(t *testing.T) {
 	}
 }
 
-func testIsAlreadyCommittedQueryLog(t *testing.T, queryLog *connection.QueryLog) {
+func TestCommitErrorByAfterCommitCallback(t *testing.T) {
+	db, err := sql.Open("", "")
+	if err != nil {
+		t.Fatalf("%+v\n", err)
+	}
+	tx, err := db.Begin()
+	if err != nil {
+		t.Fatalf("%+v\n", err)
+	}
+	insertRecords(tx, t)
+	BeforeCommitCallback(func(tx *sql.Tx, writeQueries []*sql.QueryLog) error {
+		return nil
+	})
+	AfterCommitCallback(func(*sql.Tx) error {
+		return errors.New("after commit error")
+	}, func(tx *sql.Tx, isCriticalError bool, failureQueries []*sql.QueryLog) error {
+		return errors.New("after commit error")
+	})
+	if err := tx.Commit(); err == nil {
+		t.Fatal("cannot handle error")
+	} else {
+		tx.Rollback()
+		log.Println(err)
+	}
+}
+
+func TestCommitCallbackForTx(t *testing.T) {
+	db, err := sql.Open("", "")
+	if err != nil {
+		t.Fatalf("%+v\n", err)
+	}
+	tx, err := db.Begin()
+	if err != nil {
+		t.Fatalf("%+v\n", err)
+	}
+	insertRecords(tx, t)
+	isInvokedBeforeCommitCallback := false
+	tx.BeforeCommitCallback(func(writeQueries []*sql.QueryLog) error {
+		isInvokedBeforeCommitCallback = true
+		return nil
+	})
+	isInvokedAfterCommitCallback := false
+	tx.AfterCommitCallback(func() error {
+		isInvokedAfterCommitCallback = true
+		return nil
+	}, func(isCriticalError bool, failureQueries []*sql.QueryLog) error {
+		return nil
+	})
+	checkErr(t, tx.Commit())
+	if !isInvokedBeforeCommitCallback {
+		t.Fatal("cannot invoke callback for before commit")
+	}
+	if !isInvokedAfterCommitCallback {
+		t.Fatal("cannot invoke callback for after commit")
+	}
+}
+
+func testIsAlreadyCommittedQueryLog(t *testing.T, queryLog *sql.QueryLog) {
 	initializeTables(t)
 	db, err := sql.Open("", "")
 	if err != nil {
@@ -289,14 +352,14 @@ func testIsAlreadyCommittedQueryLog(t *testing.T, queryLog *connection.QueryLog)
 }
 
 func TestIsAlreadyCommittedDeleteQueryLog(t *testing.T) {
-	testIsAlreadyCommittedQueryLog(t, &connection.QueryLog{
+	testIsAlreadyCommittedQueryLog(t, &sql.QueryLog{
 		Query: "DELETE from user_stages WHERE id = ? AND user_id = ?",
 		Args:  []interface{}{1, 10},
 	})
 }
 
 func TestIsAlreadyCommittedInsertQueryLog(t *testing.T) {
-	testIsAlreadyCommittedQueryLog(t, &connection.QueryLog{
+	testIsAlreadyCommittedQueryLog(t, &sql.QueryLog{
 		Query:        "INSERT INTO user_stages(user_id, name, age) VALUES (10, ?, ?)",
 		Args:         []interface{}{"alice", 5},
 		LastInsertID: 2,
@@ -304,7 +367,7 @@ func TestIsAlreadyCommittedInsertQueryLog(t *testing.T) {
 }
 
 func TestIsAlreadyCommittedUpdateQueryLog(t *testing.T) {
-	testIsAlreadyCommittedQueryLog(t, &connection.QueryLog{
+	testIsAlreadyCommittedQueryLog(t, &sql.QueryLog{
 		Query: "UPDATE user_stages set name = ?, age = 5 where user_id = ?",
 		Args:  []interface{}{"alice", 10},
 	})

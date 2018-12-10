@@ -5,14 +5,13 @@ import (
 
 	vtparser "github.com/knocknote/vitess-sqlparser/sqlparser"
 	"github.com/pkg/errors"
-	"go.knocknote.io/octillery/connection"
 	"go.knocknote.io/octillery/exec"
 	"go.knocknote.io/octillery/sqlparser"
 )
 
 // GetParsedQueryByQueryLog get instance of `sqlparser.Query` by QueryLog.
 // If QueryLog has LastInsertID value, add to query it
-func (t *Tx) GetParsedQueryByQueryLog(log *connection.QueryLog) (sqlparser.Query, error) {
+func (t *Tx) GetParsedQueryByQueryLog(log *QueryLog) (sqlparser.Query, error) {
 	parser, err := sqlparser.New()
 	if err != nil {
 		return nil, errors.WithStack(err)
@@ -64,7 +63,7 @@ func (t *Tx) ConvertWriteQueryIntoCountQuery(query sqlparser.Query) (sqlparser.Q
 }
 
 // IsAlreadyCommittedQueryLog returns whether write query gave by QueryLog is committed or not.
-func (t *Tx) IsAlreadyCommittedQueryLog(log *connection.QueryLog) (bool, error) {
+func (t *Tx) IsAlreadyCommittedQueryLog(log *QueryLog) (bool, error) {
 	writeQuery, err := t.GetParsedQueryByQueryLog(log)
 	if err != nil {
 		return false, errors.WithStack(err)
@@ -81,9 +80,7 @@ func (t *Tx) IsAlreadyCommittedQueryLog(log *connection.QueryLog) (bool, error) 
 	if err != nil {
 		return false, errors.WithStack(err)
 	}
-	if t.tx == nil {
-		t.tx = conn.Begin(t.ctx, t.opts)
-	}
+	t.begin(conn)
 	if conn.IsShard {
 		row, err := exec.NewQueryExecutor(nil, conn, t.tx, countQuery).QueryRow()
 		if err != nil {
@@ -115,7 +112,7 @@ func (t *Tx) IsAlreadyCommittedQueryLog(log *connection.QueryLog) (bool, error) 
 
 // ExecWithQueryLog exec query by *connection.QueryLog.
 // This is able to use for recovery from distributed transaction error.
-func (t *Tx) ExecWithQueryLog(log *connection.QueryLog) (Result, error) {
+func (t *Tx) ExecWithQueryLog(log *QueryLog) (Result, error) {
 	query, err := t.GetParsedQueryByQueryLog(log)
 	if err != nil {
 		return nil, errors.WithStack(err)
@@ -127,9 +124,7 @@ func (t *Tx) ExecWithQueryLog(log *connection.QueryLog) (Result, error) {
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
-	if t.tx == nil {
-		t.tx = conn.Begin(t.ctx, t.opts)
-	}
+	t.begin(conn)
 	if conn.IsShard {
 		result, err := exec.NewQueryExecutor(t.ctx, conn, t.tx, query).Exec()
 		if err != nil {
@@ -144,7 +139,7 @@ func (t *Tx) ExecWithQueryLog(log *connection.QueryLog) (Result, error) {
 	return result, nil
 }
 
-func (*Tx) replaceInsertQueryByQueryLog(log *connection.QueryLog, query *sqlparser.InsertQuery) error {
+func (*Tx) replaceInsertQueryByQueryLog(log *QueryLog, query *sqlparser.InsertQuery) error {
 	if log.LastInsertID == 0 {
 		return nil
 	}

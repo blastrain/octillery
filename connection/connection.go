@@ -16,10 +16,7 @@ import (
 )
 
 var (
-	globalConfig                     *config.Config
-	globalBeforeCommitCallback       func(*TxConnection, []*QueryLog) error
-	globalAfterCommitSuccessCallback func(*TxConnection)
-	globalAfterCommitFailureCallback func(*TxConnection, bool, []*QueryLog)
+	globalConfig *config.Config
 )
 
 // QueryLog type for storing information of executed query
@@ -124,13 +121,16 @@ type DBConnection struct {
 
 // TxConnection manage transaction
 type TxConnection struct {
-	dsnList          []string
-	dsnToTx          map[string]*sql.Tx
-	txToWriteQueries map[*sql.Tx][]*QueryLog
-	ctx              context.Context
-	opts             *sql.TxOptions
-	WriteQueries     []*QueryLog
-	ReadQueries      []*QueryLog
+	dsnList                    []string
+	dsnToTx                    map[string]*sql.Tx
+	txToWriteQueries           map[*sql.Tx][]*QueryLog
+	ctx                        context.Context
+	opts                       *sql.TxOptions
+	WriteQueries               []*QueryLog
+	ReadQueries                []*QueryLog
+	BeforeCommitCallback       func() error
+	AfterCommitSuccessCallback func() error
+	AfterCommitFailureCallback func(bool, []*QueryLog) error
 }
 
 func (c *TxConnection) beginIfNotInitialized(conn Connection) error {
@@ -283,27 +283,29 @@ func (c *TxConnection) Exec(ctx context.Context, conn Connection, query string, 
 }
 
 // Commit executes `Commit` with transaction.
-func (c *TxConnection) Commit() error {
+func (c *TxConnection) Commit() (e error) {
 	if c == nil {
-		return errors.New("cannot commit. TxConnection is nil")
+		return nil
 	}
 	if len(c.dsnToTx) == 0 {
 		return nil
 	}
-	if globalBeforeCommitCallback != nil {
-		if err := globalBeforeCommitCallback(c, c.WriteQueries); err != nil {
-			return errors.WithStack(err)
-		}
+	if err := c.BeforeCommitCallback(); err != nil {
+		return errors.WithStack(err)
 	}
 	committedWriteQueryNum := 0
 	failedWriteQueries := []*QueryLog{}
 	isCriticalError := false
 
 	defer func() {
-		if len(failedWriteQueries) == 0 && globalAfterCommitSuccessCallback != nil {
-			globalAfterCommitSuccessCallback(c)
-		} else if len(failedWriteQueries) > 0 && globalAfterCommitFailureCallback != nil {
-			globalAfterCommitFailureCallback(c, isCriticalError, failedWriteQueries)
+		if len(failedWriteQueries) == 0 {
+			if err := c.AfterCommitSuccessCallback(); err != nil {
+				e = err
+			}
+		} else if len(failedWriteQueries) > 0 {
+			if err := c.AfterCommitFailureCallback(isCriticalError, failedWriteQueries); err != nil {
+				e = err
+			}
 		}
 	}()
 
@@ -366,11 +368,14 @@ func (c *DBConnection) Conn() *sql.DB {
 // Begin creates TxConnection instance for transaction.
 func (c *DBConnection) Begin(ctx context.Context, opts *sql.TxOptions) *TxConnection {
 	return &TxConnection{
-		dsnList:          []string{},
-		dsnToTx:          map[string]*sql.Tx{},
-		txToWriteQueries: map[*sql.Tx][]*QueryLog{},
-		ctx:              ctx,
-		opts:             opts,
+		dsnList:                    []string{},
+		dsnToTx:                    map[string]*sql.Tx{},
+		txToWriteQueries:           map[*sql.Tx][]*QueryLog{},
+		ctx:                        ctx,
+		opts:                       opts,
+		BeforeCommitCallback:       func() error { return nil },
+		AfterCommitSuccessCallback: func() error { return nil },
+		AfterCommitFailureCallback: func(bool, []*QueryLog) error { return nil },
 	}
 }
 
@@ -797,21 +802,6 @@ func NewConnectionManager() (*DBConnectionManager, error) {
 func SetConfig(cfg *config.Config) error {
 	globalConfig = cfg
 	return errors.WithStack(setupDBFromConfig(cfg))
-}
-
-// SetBeforeCommitCallback set function for it is callbacked before commit.
-// Function is set as internal global variable, so must be care possible about it is called by multiple threads.
-func SetBeforeCommitCallback(callback func(tx *TxConnection, writeQueries []*QueryLog) error) {
-	globalBeforeCommitCallback = callback
-}
-
-// SetAfterCommitCallback set function for it is callbacked after commit.
-// Function is set as internal global variable, so must be care possible about it is called by multiple threads.
-func SetAfterCommitCallback(
-	successCallback func(*TxConnection),
-	failureCallback func(*TxConnection, bool, []*QueryLog)) {
-	globalAfterCommitSuccessCallback = successCallback
-	globalAfterCommitFailureCallback = failureCallback
 }
 
 func setupDBFromConfig(config *config.Config) error {

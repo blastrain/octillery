@@ -75,14 +75,14 @@ func Exec(db *osql.DB, queryText string) ([]*sql.Rows, sql.Result, error) {
 
 // BeforeCommitCallback set function for it is callbacked before commit.
 // Function is set as internal global variable, so must be care possible about it is called by multiple threads.
-func BeforeCommitCallback(callback func(*connection.TxConnection, []*connection.QueryLog) error) {
-	connection.SetBeforeCommitCallback(callback)
+func BeforeCommitCallback(callback func(*osql.Tx, []*osql.QueryLog) error) {
+	osql.SetBeforeCommitCallback(callback)
 }
 
 // AfterCommitCallback set function for it is callbacked after commit.
 // Function is set as internal global variable, so must be care possible about it is called by multiple threads.
 func AfterCommitCallback(
-	successCallback func(*connection.TxConnection),
-	failureCallback func(*connection.TxConnection, bool, []*connection.QueryLog)) {
-	connection.SetAfterCommitCallback(successCallback, failureCallback)
+	successCallback func(*osql.Tx) error,
+	failureCallback func(*osql.Tx, bool, []*osql.QueryLog) error) {
+	osql.SetAfterCommitCallback(successCallback, failureCallback)
 }
