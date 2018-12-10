@@ -7,6 +7,32 @@ import (
 	"go.knocknote.io/octillery/sqlparser"
 )
 
+func TestGetParsedQueryByQueryLog(t *testing.T) {
+	db, err := Open("", "")
+	checkErr(t, err)
+	tx, err := db.Begin()
+	checkErr(t, err)
+	if _, err := tx.GetParsedQueryByQueryLog(&connection.QueryLog{
+		Query: "invalid query",
+	}); err == nil {
+		t.Fatal("cannot handle error")
+	}
+}
+
+func TestConvertWriteQueryIntoCountQuery(t *testing.T) {
+	db, err := Open("", "")
+	checkErr(t, err)
+	tx, err := db.Begin()
+	checkErr(t, err)
+	readQuery, err := tx.GetParsedQueryByQueryLog(&connection.QueryLog{
+		Query: "SELECT * FROM user_stages",
+	})
+	checkErr(t, err)
+	if _, err := tx.ConvertWriteQueryIntoCountQuery(readQuery); err == nil {
+		t.Fatal("cannot handle error")
+	}
+}
+
 func TestConvertInsertQueryIntoCountQuery(t *testing.T) {
 	db, err := Open("", "")
 	checkErr(t, err)
@@ -207,4 +233,33 @@ func TestExecWithQueryLog(t *testing.T) {
 		}
 		checkErr(t, tx.Rollback())
 	}
+}
+
+func TestIsAlreadyCommittedQueryLog(t *testing.T) {
+	db, err := Open("", "")
+	checkErr(t, err)
+	tx, err := db.Begin()
+	checkErr(t, err)
+	// call only
+	if _, err := tx.IsAlreadyCommittedQueryLog(&connection.QueryLog{
+		Query: "invalid query",
+	}); err == nil {
+		t.Fatal("cannot handle error")
+	}
+	if _, err := tx.IsAlreadyCommittedQueryLog(&connection.QueryLog{
+		Query: "SELECT * FROM users",
+	}); err == nil {
+		t.Fatal("cannot handle error")
+	}
+	tx.IsAlreadyCommittedQueryLog(&connection.QueryLog{
+		Query: "invalid query",
+	})
+
+	tx.IsAlreadyCommittedQueryLog(&connection.QueryLog{
+		Query: "DELETE FROM user_stages WHERE user_id = ?",
+		Args:  []interface{}{10},
+	})
+	tx.IsAlreadyCommittedQueryLog(&connection.QueryLog{
+		Query: "DELETE FROM users WHERE id = 10",
+	})
 }
