@@ -46,15 +46,22 @@ func (p *Parser) isShardKeyColumn(valExpr vtparser.Expr, queryBase *QueryBase) b
 	return false
 }
 
+func (p *Parser) ValueIndexByValArg(arg *vtparser.SQLVal) int {
+	r := regexp.MustCompile(`:v([0-9]+)`)
+	debug.Printf("ValArg: %s", string(arg.Val))
+	results := r.FindAllStringSubmatch(string(arg.Val), -1)
+	if len(results) > 0 && len(results[0]) > 1 {
+		index, _ := strconv.Atoi(results[0][1])
+		return index
+	}
+	return 0
+}
+
 func (p *Parser) parseShardColumnPlaceholderIndex(valExpr vtparser.Expr) int {
 	switch expr := valExpr.(type) {
 	case *vtparser.SQLVal:
-		r := regexp.MustCompile(`:v([0-9]+)`)
-		debug.Printf("ValArg: %s", string(expr.Val))
-		results := r.FindAllStringSubmatch(string(expr.Val), -1)
-		if len(results) > 0 && len(results[0]) > 1 {
-			index, _ := strconv.Atoi(results[0][1])
-			return index
+		if expr.Type == vtparser.ValArg {
+			return p.ValueIndexByValArg(expr)
 		}
 	default:
 		debug.Printf("default: %s", reflect.TypeOf(expr))

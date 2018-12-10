@@ -3,9 +3,7 @@ package sql
 import (
 	"context"
 	core "database/sql"
-	"fmt"
 
-	vtparser "github.com/knocknote/vitess-sqlparser/sqlparser"
 	"github.com/pkg/errors"
 	"go.knocknote.io/octillery/connection"
 	"go.knocknote.io/octillery/debug"
@@ -289,76 +287,4 @@ func (proxy *Tx) QueryRowContext(ctx context.Context, query string, args ...inte
 func (proxy *Tx) QueryRow(query string, args ...interface{}) *Row {
 	debug.Printf("Tx.QueryRow: %s", query)
 	return proxy.queryRowProxy(nil, query, args...)
-}
-
-func (proxy *Tx) replaceInsertQueryByQueryLog(log *connection.QueryLog, query *sqlparser.InsertQuery) error {
-	if log.LastInsertID == 0 {
-		return nil
-	}
-	stmt := query.Stmt
-	foundIDColumnIndex := -1
-	for idx, column := range stmt.Columns {
-		if column.String() == "id" {
-			foundIDColumnIndex = idx
-			break
-		}
-	}
-	if foundIDColumnIndex >= 0 {
-		val := vtparser.NewIntVal([]byte(fmt.Sprint(log.LastInsertID)))
-		stmt.Rows.(vtparser.Values)[0][foundIDColumnIndex] = val
-	} else {
-		columns := vtparser.Columns{}
-		columns = append(columns, vtparser.NewColIdent("id"))
-		for _, column := range stmt.Columns {
-			columns = append(columns, column)
-		}
-		stmt.Columns = columns
-		values := vtparser.Values{vtparser.ValTuple{}}
-		val := vtparser.NewIntVal([]byte(fmt.Sprint(log.LastInsertID)))
-		values[0] = append(values[0], val)
-		for _, val := range stmt.Rows.(vtparser.Values)[0] {
-			values[0] = append(values[0], val)
-		}
-		stmt.Rows = values
-	}
-	return nil
-}
-
-// ExecWithQueryLog exec query by *connection.QueryLog.
-// This is able to use for recovery from distributed transaction error.
-func (proxy *Tx) ExecWithQueryLog(log *connection.QueryLog) (Result, error) {
-	parser, err := sqlparser.New()
-	if err != nil {
-		return nil, errors.WithStack(err)
-	}
-	query, err := parser.Parse(log.Query, log.Args)
-	if err != nil {
-		return nil, errors.WithStack(err)
-	}
-	switch query.QueryType() {
-	case sqlparser.Insert:
-		proxy.replaceInsertQueryByQueryLog(log, query.(*sqlparser.InsertQuery))
-		fallthrough
-	case sqlparser.Update, sqlparser.Delete:
-		conn, err := proxy.connMgr.ConnectionByTableName(query.Table())
-		if err != nil {
-			return nil, errors.WithStack(err)
-		}
-		if proxy.tx == nil {
-			proxy.tx = conn.Begin(proxy.ctx, proxy.opts)
-		}
-		if conn.IsShard {
-			result, err := exec.NewQueryExecutor(proxy.ctx, conn, proxy.tx, query).Exec()
-			if err != nil {
-				return nil, errors.WithStack(err)
-			}
-			return result, nil
-		}
-		result, err := proxy.tx.Exec(proxy.ctx, conn, log.Query, log.Args...)
-		if err != nil {
-			return nil, errors.WithStack(err)
-		}
-		return result, nil
-	}
-	return nil, errors.Errorf("cannot exec query type %d", query.QueryType())
 }

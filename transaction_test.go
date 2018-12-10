@@ -16,7 +16,7 @@ func init() {
 }
 
 func insertToUsers(tx *sql.Tx, t *testing.T) int64 {
-	result, err := tx.Exec("INSERT INTO users(id, name) VALUES (null, 'alice')")
+	result, err := tx.Exec("INSERT INTO users(id, name, age) VALUES (null, 'alice', 5)")
 	if err != nil {
 		t.Fatalf("%+v\n", err)
 	}
@@ -52,7 +52,7 @@ func insertToUserDecks(tx *sql.Tx, t *testing.T) int64 {
 }
 
 func insertToUserStages(tx *sql.Tx, t *testing.T) int64 {
-	result, err := tx.Exec("INSERT INTO user_stages(user_id) values (10)")
+	result, err := tx.Exec("INSERT INTO user_stages(user_id, name, age) values (10, 'bob', 10)")
 	if err != nil {
 		t.Fatalf("%+v\n", err)
 	}
@@ -79,7 +79,8 @@ func initializeTables(t *testing.T) {
 	if _, err := db.Exec(`
 CREATE TABLE IF NOT EXISTS users(
     id integer NOT NULL PRIMARY KEY,
-    name varchar(255) NOT NULL
+    name varchar(255) NOT NULL,
+    age integer NOT NULL
 )`); err != nil {
 		t.Fatalf("%+v\n", err)
 	}
@@ -100,7 +101,9 @@ CREATE TABLE IF NOT EXISTS user_decks(
 	if _, err := db.Exec(`
 CREATE TABLE IF NOT EXISTS user_stages(
     id integer NOT NULL PRIMARY KEY autoincrement,
-    user_id integer NOT NULL
+    user_id integer NOT NULL,
+    name varchar(255) NOT NULL,
+    age integer NOT NULL
 )`); err != nil {
 		t.Fatalf("%+v\n", err)
 	}
@@ -168,7 +171,7 @@ func TestDistributedTransactionNormalError(t *testing.T) {
 		if len(failureQueries) != 1 {
 			t.Fatal("cannot capture failure query")
 		}
-		if failureQueries[0].Query != fmt.Sprintf("insert into users(id, name) values (%d, 'alice')", id) {
+		if failureQueries[0].Query != fmt.Sprintf("insert into users(id, name, age) values (%d, 'alice', 5)", id) {
 			t.Fatal("cannot capture failure query")
 		}
 		if failureQueries[0].LastInsertID != id {
@@ -212,7 +215,7 @@ func TestDistributedTransactionCriticalError(t *testing.T) {
 		if len(failureQueries) != 1 {
 			t.Fatal("cannot capture failure query")
 		}
-		if failureQueries[0].Query != "INSERT INTO user_stages(user_id) values (10)" {
+		if failureQueries[0].Query != "INSERT INTO user_stages(user_id, name, age) values (10, 'bob', 10)" {
 			t.Fatal("cannot capture failure query")
 		}
 		if failureQueries[0].LastInsertID != 1 {
@@ -236,6 +239,9 @@ func TestDistributedTransactionCriticalError(t *testing.T) {
 		if lastInsertID != 1 {
 			t.Fatal("cannot recovery query")
 		}
+		if err := newTx.Rollback(); err != nil {
+			t.Fatalf("%+v\n", err)
+		}
 	})
 	if err := os.Remove("/tmp/user_stage.bin"); err != nil {
 		t.Fatalf("%+v\n", err)
@@ -249,4 +255,57 @@ func TestDistributedTransactionCriticalError(t *testing.T) {
 		tx.Rollback()
 		log.Println(err)
 	}
+}
+
+func testIsAlreadyCommittedQueryLog(t *testing.T, queryLog *connection.QueryLog) {
+	initializeTables(t)
+	db, err := sql.Open("", "")
+	if err != nil {
+		t.Fatalf("%+v\n", err)
+	}
+	tx, err := db.Begin()
+	if err != nil {
+		t.Fatalf("%+v\n", err)
+	}
+	insertRecords(tx, t)
+	{
+		isCommitted, err := tx.IsAlreadyCommittedQueryLog(queryLog)
+		checkErr(t, err)
+		if isCommitted {
+			t.Fatal("cannot work IsAlreadyCommittedQueryLog")
+		}
+	}
+	if _, err := tx.ExecWithQueryLog(queryLog); err != nil {
+		t.Fatal("cannot work ExecWithQueryLog")
+	}
+	{
+		isCommitted, err := tx.IsAlreadyCommittedQueryLog(queryLog)
+		checkErr(t, err)
+		if !isCommitted {
+			t.Fatal("cannot work IsAlreadyCommittedQueryLog")
+		}
+	}
+	checkErr(t, tx.Rollback())
+}
+
+func TestIsAlreadyCommittedDeleteQueryLog(t *testing.T) {
+	testIsAlreadyCommittedQueryLog(t, &connection.QueryLog{
+		Query: "DELETE from user_stages WHERE id = ? AND user_id = ?",
+		Args:  []interface{}{1, 10},
+	})
+}
+
+func TestIsAlreadyCommittedInsertQueryLog(t *testing.T) {
+	testIsAlreadyCommittedQueryLog(t, &connection.QueryLog{
+		Query:        "INSERT INTO user_stages(user_id, name, age) VALUES (10, ?, ?)",
+		Args:         []interface{}{"alice", 5},
+		LastInsertID: 2,
+	})
+}
+
+func TestIsAlreadyCommittedUpdateQueryLog(t *testing.T) {
+	testIsAlreadyCommittedQueryLog(t, &connection.QueryLog{
+		Query: "UPDATE user_stages set name = ?, age = 5 where user_id = ?",
+		Args:  []interface{}{"alice", 10},
+	})
 }
