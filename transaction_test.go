@@ -351,6 +351,25 @@ func testIsAlreadyCommittedQueryLog(t *testing.T, queryLog *sql.QueryLog) {
 	checkErr(t, tx.Rollback())
 }
 
+func TestIsAlreadyCommittedQueryLogErrorCase(t *testing.T) {
+	db, err := sql.Open("", "")
+	if err != nil {
+		t.Fatalf("%+v\n", err)
+	}
+	tx, err := db.Begin()
+	if err != nil {
+		t.Fatalf("%+v\n", err)
+	}
+	if _, err := tx.IsAlreadyCommittedQueryLog(&sql.QueryLog{
+		Query: "SELECT * FROM user_stages",
+	}); err == nil {
+		t.Fatal("cannot handle error")
+	} else {
+		log.Println(err)
+	}
+	checkErr(t, tx.Rollback())
+}
+
 func TestIsAlreadyCommittedDeleteQueryLog(t *testing.T) {
 	testIsAlreadyCommittedQueryLog(t, &sql.QueryLog{
 		Query: "DELETE from user_stages WHERE id = ? AND user_id = ?",

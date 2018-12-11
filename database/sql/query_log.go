@@ -59,7 +59,7 @@ func (t *Tx) ConvertWriteQueryIntoCountQuery(query sqlparser.Query) (sqlparser.Q
 		}
 		return resultQuery, nil
 	}
-	return nil, errors.Errorf("cannot convert query type %d", query.QueryType())
+	return nil, errors.Errorf("cannot convert query type '%s'", query.QueryType())
 }
 
 // IsAlreadyCommittedQueryLog returns whether write query gave by QueryLog is committed or not.
@@ -70,7 +70,7 @@ func (t *Tx) IsAlreadyCommittedQueryLog(log *QueryLog) (bool, error) {
 	}
 	queryType := writeQuery.QueryType()
 	if !queryType.IsWriteQuery() {
-		return false, errors.Errorf("query log is not write query type. type is %d", queryType)
+		return false, errors.Errorf("'%s' query is not write query type", queryType)
 	}
 	countQuery, err := t.ConvertWriteQueryIntoCountQuery(writeQuery)
 	if err != nil {
@@ -118,7 +118,7 @@ func (t *Tx) ExecWithQueryLog(log *QueryLog) (Result, error) {
 		return nil, errors.WithStack(err)
 	}
 	if !query.QueryType().IsWriteQuery() {
-		return nil, errors.Errorf("cannot exec query type %d", query.QueryType())
+		return nil, errors.Errorf("cannot exec query type '%s'", query.QueryType())
 	}
 	conn, err := t.connMgr.ConnectionByTableName(query.Table())
 	if err != nil {
