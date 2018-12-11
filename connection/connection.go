@@ -300,11 +300,11 @@ func (c *TxConnection) Commit() (e error) {
 	defer func() {
 		if len(failedWriteQueries) == 0 {
 			if err := c.AfterCommitSuccessCallback(); err != nil {
-				e = err
+				e = errors.WithStack(err)
 			}
 		} else if len(failedWriteQueries) > 0 {
 			if err := c.AfterCommitFailureCallback(isCriticalError, failedWriteQueries); err != nil {
-				e = err
+				e = errors.WithStack(err)
 			}
 		}
 	}()
