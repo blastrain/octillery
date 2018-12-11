@@ -3,6 +3,7 @@ package sql
 import (
 	"context"
 	core "database/sql"
+	"sync"
 
 	"github.com/pkg/errors"
 	"go.knocknote.io/octillery/connection"
@@ -12,6 +13,7 @@ import (
 )
 
 var (
+	callbackMu                       sync.RWMutex
 	globalBeforeCommitCallback       = func(*Tx, []*QueryLog) error { return nil }
 	globalAfterCommitSuccessCallback = func(*Tx) error { return nil }
 	globalAfterCommitFailureCallback = func(*Tx, bool, []*QueryLog) error { return nil }
@@ -30,6 +32,8 @@ func SetBeforeCommitCallback(callback func(tx *Tx, writeQueries []*QueryLog) err
 	if callback == nil {
 		return
 	}
+	callbackMu.Lock()
+	defer callbackMu.Unlock()
 	globalBeforeCommitCallback = callback
 }
 
@@ -41,6 +45,8 @@ func SetAfterCommitCallback(
 	if successCallback == nil || failureCallback == nil {
 		return
 	}
+	callbackMu.Lock()
+	defer callbackMu.Unlock()
 	globalAfterCommitSuccessCallback = successCallback
 	globalAfterCommitFailureCallback = failureCallback
 }
