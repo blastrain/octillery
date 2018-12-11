@@ -139,9 +139,9 @@ func (t *Tx) ExecWithQueryLog(log *QueryLog) (Result, error) {
 	return result, nil
 }
 
-func (*Tx) replaceInsertQueryByQueryLog(log *QueryLog, query *sqlparser.InsertQuery) error {
+func (*Tx) replaceInsertQueryByQueryLog(log *QueryLog, query *sqlparser.InsertQuery) {
 	if log.LastInsertID == 0 {
-		return nil
+		return
 	}
 	stmt := query.Stmt
 	foundIDColumnIndex := -1
@@ -174,7 +174,6 @@ func (*Tx) replaceInsertQueryByQueryLog(log *QueryLog, query *sqlparser.InsertQu
 		stmt.Rows = values
 		query.ColumnValues = []func() *vtparser.SQLVal{}
 	}
-	return nil
 }
 
 func (*Tx) countQuery(tableName string, whereExpr vtparser.Expr) *vtparser.Select {
