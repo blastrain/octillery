@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"log"
 	"path/filepath"
 	"testing"
 
@@ -12,6 +13,20 @@ import (
 	osql "go.knocknote.io/octillery/database/sql"
 	"go.knocknote.io/octillery/path"
 )
+
+func init() {
+	BeforeCommitCallback(func(tx *osql.Tx, writeQueries []*osql.QueryLog) error {
+		log.Println("BeforeCommit", writeQueries)
+		return nil
+	})
+	AfterCommitCallback(func(*osql.Tx) error {
+		log.Println("AfterCommit")
+		return nil
+	}, func(tx *osql.Tx, isCriticalError bool, failureQueries []*osql.QueryLog) error {
+		log.Println("AfterCommit", failureQueries)
+		return nil
+	})
+}
 
 func checkErr(t *testing.T, err error) {
 	if err != nil {

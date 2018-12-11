@@ -45,7 +45,7 @@ func (e *UpdateQueryExecutor) Exec() (sql.Result, error) {
 		return nil, errors.WithStack(err)
 	}
 	debug.Printf("(DB:%s):%s", shardConn.ShardName, query.Text)
-	result, err := e.exec(shardConn.Connection, query.Text, query.Args...)
+	result, err := e.exec(shardConn, query.Text, query.Args...)
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}

@@ -36,7 +36,7 @@ func (e *SelectQueryExecutor) Query() ([]*sql.Rows, error) {
 		e.tx = nil // transaction is ignored at this query
 		for _, shardConn := range e.conn.ShardConnections.AllShard() {
 			debug.Printf("(DB:%s):%s", shardConn.ShardName, query.Text)
-			rows, err := e.execQuery(shardConn.Connection, query.Text, query.Args...)
+			rows, err := e.execQuery(shardConn, query.Text, query.Args...)
 			if err != nil {
 				errs = append(errs, err.Error())
 				continue
@@ -55,7 +55,7 @@ func (e *SelectQueryExecutor) Query() ([]*sql.Rows, error) {
 		return nil, errors.WithStack(err)
 	}
 	debug.Printf("(DB:%s):%s", shardConn.ShardName, query.Text)
-	rows, err := e.execQuery(shardConn.Connection, query.Text, query.Args...)
+	rows, err := e.execQuery(shardConn, query.Text, query.Args...)
 	if err != nil {
 		return allRows, errors.WithStack(err)
 	}
@@ -84,7 +84,7 @@ func (e *SelectQueryExecutor) QueryRow() (*sql.Row, error) {
 		return nil, errors.WithStack(err)
 	}
 	debug.Printf("(DB:%s):%s", shardConn.ShardName, query.Text)
-	row, err := e.execQueryRow(shardConn.Connection, query.Text, query.Args...)
+	row, err := e.execQueryRow(shardConn, query.Text, query.Args...)
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}

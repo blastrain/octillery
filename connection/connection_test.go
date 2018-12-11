@@ -449,38 +449,36 @@ func TestTransaction(t *testing.T) {
 	defer cancel()
 	t.Run("without context", func(t *testing.T) {
 		tx := conn.Begin(nil, nil)
-		checkErr(t, tx.ValidateConnection(conn))
-		stmt, err := tx.Prepare(nil, conn.Connection, "select * from user_stages where id = ?")
+		stmt, err := tx.Prepare(nil, conn, "select * from user_stages where id = ?")
 		checkErr(t, err)
-		if _, err := tx.Stmt(nil, conn.Connection, stmt); err != nil {
+		if _, err := tx.Stmt(nil, conn, stmt); err != nil {
 			t.Fatalf("%+v\n", err)
 		}
-		if _, err := tx.QueryRow(nil, conn.Connection, "select * from user_stages where id = 1"); err != nil {
+		if _, err := tx.QueryRow(nil, conn, "select * from user_stages where id = 1"); err != nil {
 			t.Fatalf("%+v\n", err)
 		}
-		if _, err := tx.Query(nil, conn.Connection, "select * from user_stages"); err != nil {
+		if _, err := tx.Query(nil, conn, "select * from user_stages"); err != nil {
 			t.Fatalf("%+v\n", err)
 		}
-		if _, err := tx.Exec(nil, conn.Connection, "delete from user_stages where id = 1"); err != nil {
+		if _, err := tx.Exec(nil, conn, "delete from user_stages where id = 1"); err != nil {
 			t.Fatalf("%+v\n", err)
 		}
 		checkErr(t, tx.Commit())
 	})
 	t.Run("with context", func(t *testing.T) {
 		tx := conn.Begin(ctx, nil)
-		checkErr(t, tx.ValidateConnection(conn))
-		stmt, err := tx.Prepare(ctx, conn.Connection, "select * from user_stages where id = ?")
+		stmt, err := tx.Prepare(ctx, conn, "select * from user_stages where id = ?")
 		checkErr(t, err)
-		if _, err := tx.Stmt(ctx, conn.Connection, stmt); err != nil {
+		if _, err := tx.Stmt(ctx, conn, stmt); err != nil {
 			t.Fatalf("%+v\n", err)
 		}
-		if _, err := tx.QueryRow(ctx, conn.Connection, "select * from user_stages where id = 1"); err != nil {
+		if _, err := tx.QueryRow(ctx, conn, "select * from user_stages where id = 1"); err != nil {
 			t.Fatalf("%+v\n", err)
 		}
-		if _, err := tx.Query(ctx, conn.Connection, "select * from user_stages"); err != nil {
+		if _, err := tx.Query(ctx, conn, "select * from user_stages"); err != nil {
 			t.Fatalf("%+v\n", err)
 		}
-		if _, err := tx.Exec(ctx, conn.Connection, "delete from user_stages where id = 1"); err != nil {
+		if _, err := tx.Exec(ctx, conn, "delete from user_stages where id = 1"); err != nil {
 			t.Fatalf("%+v\n", err)
 		}
 		checkErr(t, tx.Rollback())

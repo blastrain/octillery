@@ -71,7 +71,7 @@ func (e *InsertQueryExecutor) Exec() (sql.Result, error) {
 		return nil, errors.WithStack(err)
 	}
 	debug.Printf("(DB:%s):%s", shardConn.ShardName, query.String())
-	result, err := e.exec(shardConn.Connection, query.String())
+	result, err := e.exec(shardConn, query.String())
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}

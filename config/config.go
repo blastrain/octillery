@@ -93,6 +93,8 @@ func (c *TableConfig) Error() error {
 
 // A Config is a database configuration includes database sharding definition.
 type Config struct {
+	// distributed transaction support
+	DistributedTransaction bool `yaml:"distributed_transaction"`
 	// map table name and configuration
 	Tables map[string]*TableConfig `yaml:"tables"`
 }
@@ -146,7 +148,7 @@ func Load(configPath string) (*Config, error) {
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
-	var config *Config
+	config := &Config{DistributedTransaction: true}
 	if err := yaml.Unmarshal(yamlFile, &config); err != nil {
 		return nil, errors.WithStack(err)
 	}

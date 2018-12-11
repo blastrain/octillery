@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
+	"go.knocknote.io/octillery/connection"
 	"go.knocknote.io/octillery/database/sql/driver"
 )
 
@@ -61,6 +62,8 @@ type Stmt struct {
 	core  *core.Stmt
 	err   error
 	query string
+	tx    *connection.TxConnection
+	conn  connection.Connection
 }
 
 // Rows the compatible structure of Rows in 'database/sql' package.
@@ -327,6 +330,12 @@ func (s *Stmt) ExecContext(ctx context.Context, args ...interface{}) (core.Resul
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
+	if s.tx == nil {
+		return result, nil
+	}
+	if err := s.tx.AddWriteQuery(s.conn, result, s.query, args...); err != nil {
+		return nil, errors.WithStack(err)
+	}
 	return result, nil
 }
 
@@ -337,6 +346,12 @@ func (s *Stmt) Exec(args ...interface{}) (core.Result, error) {
 	}
 	result, err := s.core.Exec(args...)
 	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+	if s.tx == nil {
+		return result, nil
+	}
+	if err := s.tx.AddWriteQuery(s.conn, result, s.query, args...); err != nil {
 		return nil, errors.WithStack(err)
 	}
 	return result, nil
@@ -351,6 +366,9 @@ func (s *Stmt) QueryContext(ctx context.Context, args ...interface{}) (*Rows, er
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
+	if s.tx != nil {
+		s.tx.AddReadQuery(s.query, args...)
+	}
 	return &Rows{cores: []*core.Rows{rows}}, nil
 }
 
@@ -363,6 +381,9 @@ func (s *Stmt) Query(args ...interface{}) (*Rows, error) {
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
+	if s.tx != nil {
+		s.tx.AddReadQuery(s.query, args...)
+	}
 	return &Rows{cores: []*core.Rows{rows}}, nil
 }
 
@@ -371,6 +392,9 @@ func (s *Stmt) QueryRowContext(ctx context.Context, args ...interface{}) *Row {
 	if s.err != nil {
 		return &Row{err: s.err}
 	}
+	if s.tx != nil {
+		s.tx.AddReadQuery(s.query, args...)
+	}
 	return &Row{core: s.core.QueryRowContext(ctx, args...)}
 }
 
@@ -378,6 +402,9 @@ func (s *Stmt) QueryRowContext(ctx context.Context, args ...interface{}) *Row {
 func (s *Stmt) QueryRow(args ...interface{}) *Row {
 	if s.err != nil {
 		return &Row{err: s.err}
+	}
+	if s.tx != nil {
+		s.tx.AddReadQuery(s.query, args...)
 	}
 	return &Row{core: s.core.QueryRow(args...)}
 }

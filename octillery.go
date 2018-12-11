@@ -19,7 +19,7 @@ import (
 )
 
 // Version is the variable for versioning Octillery
-const Version = "v1.0.0"
+const Version = "v1.1.0"
 
 // LoadConfig load your database configuration file.
 //
@@ -71,4 +71,18 @@ func Exec(db *osql.DB, queryText string) ([]*sql.Rows, sql.Result, error) {
 	}
 	result, err := conn.Connection.Exec(queryText)
 	return nil, result, errors.WithStack(err)
+}
+
+// BeforeCommitCallback set function for it is callbacked before commit.
+// Function is set as internal global variable, so must be care possible about it is called by multiple threads.
+func BeforeCommitCallback(callback func(*osql.Tx, []*osql.QueryLog) error) {
+	osql.SetBeforeCommitCallback(callback)
+}
+
+// AfterCommitCallback set function for it is callbacked after commit.
+// Function is set as internal global variable, so must be care possible about it is called by multiple threads.
+func AfterCommitCallback(
+	successCallback func(*osql.Tx) error,
+	failureCallback func(*osql.Tx, bool, []*osql.QueryLog) error) {
+	osql.SetAfterCommitCallback(successCallback, failureCallback)
 }

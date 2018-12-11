@@ -34,6 +34,32 @@ const (
 	TruncateTable
 )
 
+func (t QueryType) IsWriteQuery() bool {
+	return t == Insert || t == Update || t == Delete
+}
+
+func (t QueryType) String() string {
+	switch t {
+	case Unknown:
+		return "UNKNOWN"
+	case Select:
+		return "SELECT"
+	case Insert:
+		return "INSERT"
+	case Update:
+		return "UPDATE"
+	case Delete:
+		return "DELETE"
+	case Drop:
+		return "DROP"
+	case CreateTable:
+		return "CREATE TABLE"
+	case TruncateTable:
+		return "TRUNCATE TABLE"
+	}
+	return ""
+}
+
 // Query the interface that must be implemented by each query.
 type Query interface {
 	// Table returns a table name
