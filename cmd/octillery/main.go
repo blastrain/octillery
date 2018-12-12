@@ -300,7 +300,11 @@ func (cmd *ImportCommand) values(record []string, types []GoType, columns []stri
 			}
 			values = append(values, value)
 		case GoString:
-			values = append(values, v)
+			if unquotedString, err := strconv.Unquote(fmt.Sprintf("\"%s\"", v)); err == nil {
+				values = append(values, unquotedString)
+			} else {
+				values = append(values, v)
+			}
 		case GoBytes:
 			values = append(values, []byte(v))
 		case GoDateFormat:
@@ -371,11 +375,12 @@ func (cmd *ImportCommand) Execute(args []string) error {
 		if _, exists := cfg.Tables[tableName]; !exists {
 			return errors.Errorf("invalid table name %s", tableName)
 		}
-		seeds, err := ioutil.ReadFile(path)
+		seeds, err := os.Open(path)
 		if err != nil {
 			return errors.WithStack(err)
 		}
-		reader := csv.NewReader(strings.NewReader(string(seeds)))
+		reader := csv.NewReader(seeds)
+		reader.LazyQuotes = true
 		records, err := reader.ReadAll()
 		if err != nil {
 			return errors.WithStack(err)
