@@ -302,9 +302,10 @@ func (cmd *ImportCommand) values(record []string, types []GoType, columns []stri
 		case GoString:
 			unquotedString, err := strconv.Unquote(fmt.Sprintf("\"%s\"", v))
 			if err != nil {
-				return nil, errors.Wrapf(err, "cannot convert %s to unquoted string", v)
+				values = append(values, v)
+			} else {
+				values = append(values, unquotedString)
 			}
-			values = append(values, unquotedString)
 		case GoBytes:
 			values = append(values, []byte(v))
 		case GoDateFormat:
