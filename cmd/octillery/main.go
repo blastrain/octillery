@@ -300,11 +300,10 @@ func (cmd *ImportCommand) values(record []string, types []GoType, columns []stri
 			}
 			values = append(values, value)
 		case GoString:
-			unquotedString, err := strconv.Unquote(fmt.Sprintf("\"%s\"", v))
-			if err != nil {
-				values = append(values, v)
-			} else {
+			if unquotedString, err := strconv.Unquote(fmt.Sprintf("\"%s\"", v)); err == nil {
 				values = append(values, unquotedString)
+			} else {
+				values = append(values, v)
 			}
 		case GoBytes:
 			values = append(values, []byte(v))
