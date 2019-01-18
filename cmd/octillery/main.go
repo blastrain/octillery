@@ -9,13 +9,17 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
+	"os/signal"
 	"path/filepath"
 	"regexp"
 	"runtime"
 	"strconv"
 	"strings"
+	"syscall"
 	"time"
 
+	"github.com/github/gh-ost/go/base"
+	"github.com/github/gh-ost/go/logic"
 	flags "github.com/jessevdk/go-flags"
 	vtparser "github.com/knocknote/vitess-sqlparser/sqlparser"
 	"github.com/pkg/errors"
@@ -54,9 +58,94 @@ type TransposeCommand struct {
 
 // MigrateCommand type for migrate command
 type MigrateCommand struct {
-	DryRun bool   `long:"dry-run"           description:"show diff only"`
-	Quiet  bool   `long:"quiet"   short:"q" description:"not print logs during migration"`
-	Config string `long:"config"  short:"c" description:"database configuration file path" required:"config path"`
+	DryRun bool                 `long:"dry-run"           description:"show diff only"`
+	Quiet  bool                 `long:"quiet"   short:"q" description:"not print logs during migration"`
+	Config string               `long:"config"  short:"c" description:"database configuration file path" required:"config path"`
+	Online OnlineMigrateCommand `description:"online migration ( powered by gh-ost )" command:"online"`
+}
+
+type OnlineMigrateCommand struct {
+	Host                 string `long:"host"               default:"127.0.0.1" description:"MySQL hostname (preferably a replica, not the master)"`
+	AssumeMasterHostname string `long:"assume-master-host" default:""          description:"(optional) explicitly tell gh-ost the identity of the master. Format: some.host.com[:port] This is useful in master-master setups where you wish to pick an explicit master, or in a tungsten-replicator where gh-ost is unable to determine the master"`
+	Port                 int    `long:"port"               default:"3306"      description:"MySQL port (preferably a replica, not the master)"`
+	User                 string `long:"user"               default:""          description:"MySQL user"`
+	Password             string `long:"password"           default:""          description:"MySQL password"`
+	MasterUser           string `long:"master-user"        default:""          description:"MySQL user on master, if different from that on replica. Requires --assume-master-host"`
+	MasterPassword       string `long:"master-password"    default:""          description:"MySQL password on master, if different from that on replica. Requires --assume-master-host"`
+	ConfigFile           string `long:"conf"               default:""          description:"Config file"`
+	AskPass              string `long:"ask-pass"           default:"false"     description:"prompt for MySQL password"`
+
+	DatabaseName             string `long:"database"           default:""          description:"database name (mandatory)"`
+	OriginalTableName        string `long:"table"              default:""          description:"table name (mandatory)"`
+	AlterStatement           string `long:"alter"              default:""          description:"alter statement (mandatory)"`
+	CountTableRows           string `long:"exact-rowcount"     default:"false"     description:"actually count table rows as opposed to estimate them (results in more accurate progress estimation)"`
+	ConcurrentCountTableRows string `long:"concurrent-rowcount" default:"true"     description:"(with --exact-rowcount), when true (default): count rows after row-copy begins, concurrently, and adjust row estimate later on; when false: first count rows, then start row copy"`
+	AllowedRunningOnMaster   string `long:"allow-on-master"     default:"false"    description:"allow this migration to run directly on master. Preferably it would run on a replica"`
+	AllowedMasterMaster      string `long:"allow-master-master" default:"false"    description:"explicitly allow running in a master-master setup"`
+	NullableUniqueKeyAllowed string `long:"allow-nullable-unique-key" default:"false" description:"allow gh-ost to migrate based on a unique key with nullable columns. As long as no NULL values exist, this should be OK. If NULL values exist in chosen key, data may be corrupted. Use at your own risk!"`
+	ApproveRenamedColumns    string `long:"approve-renamed-columns" default:"false" description:"in case your ALTER statement renames columns, gh-ost will note that and offer its interpretation of the rename. By default gh-ost does not proceed to execute. This flag approves that gh-ost's interpretation is correct"`
+	SkipRenamedColumns       string `long:"skip-renamed-columns" default:"false" description:"in case your ALTER statement renames columns, gh-ost will note that and offer its interpretation of the rename. By default gh-ost does not proceed to execute. This flag tells gh-ost to skip the renamed columns, i.e. to treat what gh-ost thinks are renamed columns as unrelated columns. NOTE: you may lose column data"`
+	IsTungsten               string `long:"tungsten" default:"false" description:"explicitly let gh-ost know that you are running on a tungsten-replication based topology (you are likely to also provide --assume-master-host)"`
+	DiscardForeignKeys       string `long:"discard-foreign-keys" default:"false" description:"DANGER! This flag will migrate a table that has foreign keys and will NOT create foreign keys on the ghost table, thus your altered table will have NO foreign keys. This is useful for intentional dropping of foreign keys"`
+	SkipForeignKeyChecks     string `long:"skip-foreign-key-checks" default:"false" description:"set to 'true' when you know for certain there are no foreign keys on your table, and wish to skip the time it takes for gh-ost to verify that"`
+	AliyunRDS                string `long:"aliyun-rds" default:"false" description:"set to 'true' when you execute on Aliyun RDS."`
+	GoogleCloudPlatform      string `long:"gcp" default:"false" description:"set to 'true' when you execute on a 1st generation Google Cloud Platform (GCP)."`
+
+	ExecuteFlag                  string `long:"execute" default:"false" description:"actually execute the alter & migrate the table. Default is noop: do some tests and exit"`
+	TestOnReplica                string `long:"test-on-replica" default:"false" description:"Have the migration run on a replica, not on the master. At the end of migration replication is stopped, and tables are swapped and immediately swap-revert. Replication remains stopped and you can compare the two tables for building trust"`
+	TestOnReplicaSkipReplicaStop string `long:"test-on-replica-skip-replica-stop" default:"false" description:"When --test-on-replica is enabled, do not issue commands stop replication (requires --test-on-replica)"`
+	MigrateOnReplica             string `long:"migrate-on-replica" default:"false" description:"Have the migration run on a replica, not on the master. This will do the full migration on the replica including cut-over (as opposed to --test-on-replica)"`
+
+	OkToDropTable            string `long:"ok-to-drop-table" default:"false" description:"Shall the tool drop the old table at end of operation. DROPping tables can be a long locking operation, which is why I'm not doing it by default. I'm an online tool, yes?"`
+	InitiallyDropOldTable    string `long:"initially-drop-old-table" default:"false" description:"Drop a possibly existing OLD table (remains from a previous run?) before beginning operation. Default is to panic and abort if such table exists"`
+	InitiallyDropGhostTable  string `long:"initially-drop-ghost-table" default:"false" description:"Drop a possibly existing Ghost table (remains from a previous run?) before beginning operation. Default is to panic and abort if such table exists"`
+	TimestampOldTable        string `long:"timestamp-old-table" default:"false" description:"Use a timestamp in old table name. This makes old table names unique and non conflicting cross migrations"`
+	CutOver                  string `long:"cut-over" default:"atomic" description:"choose cut-over type (default|atomic, two-step)"`
+	ForceNamedCutOverCommand string `long:"force-named-cut-over" default:"false" description:"When true, the 'unpostpone|cut-over' interactive command must name the migrated table"`
+
+	SwitchToRowBinlogFormat   string `long:"switch-to-rbr" default:"false" description:"let this tool automatically switch binary log format to 'ROW' on the replica, if needed. The format will NOT be switched back. I'm too scared to do that, and wish to protect you if you happen to execute another migration while this one is running"`
+	AssumeRBR                 string `long:"assume-rbr" default:"false" description:"set to 'true' when you know for certain your server uses 'ROW' binlog_format. gh-ost is unable to tell, event after reading binlog_format, whether the replication process does indeed use 'ROW', and restarts replication to be certain RBR setting is applied. Such operation requires SUPER privileges which you might not have. Setting this flag avoids restarting replication and you can proceed to use gh-ost without SUPER privileges"`
+	CutOverExponentialBackoff string `long:"cut-over-exponential-backoff" default:"false" description:"Wait exponentially longer intervals between failed cut-over attempts. Wait intervals obey a maximum configurable with 'exponential-backoff-max-interval')."`
+
+	ExponentialBackoffMaxInterval int64   `long:"exponential-backoff-max-interval" default:"64" description:"Maximum number of seconds to wait between attempts when performing various operations with exponential backoff."`
+	ChunkSize                     int64   `long:"chunk-size" default:"1000" description:"amount of rows to handle in each iteration (allowed range: 100-100,000)"`
+	DmlBatchSize                  int64   `long:"dml-batch-size" default:"10" description:"batch size for DML events to apply in a single transaction (range 1-100)"`
+	DefaultRetries                int64   `long:"default-retries" default:"60" description:"Default number of retries for various operations before panicking"`
+	CutOverLockTimeoutSeconds     int64   `long:"cut-over-lock-timeout-seconds" default:"3" description:"Max number of seconds to hold locks on tables while attempting to cut-over (retry attempted when lock exceeds timeout)"`
+	NiceRatio                     float64 `long:"nice-ratio" default:"0" description:"force being 'nice', imply sleep time per chunk time; range: [0.0..100.0]. Example values: 0 is aggressive. 1: for every 1ms spent copying rows, sleep additional 1ms (effectively doubling runtime); 0.7: for every 10ms spend in a rowcopy chunk, spend 7ms sleeping immediately after"`
+
+	MaxLagMillis               int64  `long:"max-lag-millis" default:"1500" description:"replication lag at which to throttle operation"`
+	ReplicationLagQuery        string `long:"replication-lag-query" default:"" description:"Deprecated. gh-ost uses an internal, subsecond resolution query"`
+	ThrottleControlReplicas    string `long:"throttle-control-replicas" default:"" description:"List of replicas on which to check for lag; comma delimited. Example: myhost1.com:3306,myhost2.com,myhost3.com:3307"`
+	ThrottleQuery              string `long:"throttle-query" default:"" description:"when given, issued (every second) to check if operation should throttle. Expecting to return zero for no-throttle, >0 for throttle. Query is issued on the migrated server. Make sure this query is lightweight"`
+	ThrottleHTTP               string `long:"throttle-http" default:"" description:"when given, gh-ost checks given URL via HEAD request; any response code other than 200 (OK) causes throttling; make sure it has low latency response"`
+	HeartbeatIntervalMillis    int64  `long:"heartbeat-interval-millis" default:"100" description:"how frequently would gh-ost inject a heartbeat value"`
+	ThrottleFlagFile           string `long:"throttle-flag-file" default:"" description:"operation pauses when this file exists; hint: use a file that is specific to the table being altered"`
+	ThrottleAdditionalFlagFile string `long:"throttle-additional-flag-file" default:"/tmp/gh-ost.throttle" description:"operation pauses when this file exists; hint: keep default, use for throttling multiple gh-ost operations"`
+	PostponeCutOverFlagFile    string `long:"postpone-cut-over-flag-file" default:"" description:"while this file exists, migration will postpone the final stage of swapping tables, and will keep on syncing the ghost table. Cut-over/swapping would be ready to perform the moment the file is deleted."`
+	PanicFlagFile              string `long:"panic-flag-file" default:"" description:"when this file is created, gh-ost will immediately terminate, without cleanup"`
+
+	DropServeSocket string `long:"initially-drop-socket-file" default:"false" description:"Should gh-ost forcibly delete an existing socket file. Be careful: this might drop the socket file of a running migration!"`
+	ServeSocketFile string `long:"serve-socket-file" default:"" description:"Unix socket file to serve on. Default: auto-determined and advertised upon startup"`
+	ServeTCPPort    int64  `long:"serve-tcp-port" default:"0" description:"TCP port to serve on. Default: disabled"`
+
+	HooksPath        string `long:"hooks-path" default:"" description:"directory where hook files are found (default: empty, ie. hooks disabled). Hook files found on this path, and conforming to hook naming conventions will be executed"`
+	HooksHintMessage string `long:"hooks-hint" default:"" description:"arbitrary message to be injected to hooks via GH_OST_HOOKS_HINT, for your convenience"`
+
+	ReplicaServerId uint `long:"replica-server-id" default:"99999" description:"server id used by gh-ost process. Default: 99999"`
+
+	MaxLoad                          string `long:"max-load" default:"" description:"Comma delimited status-name=threshold. e.g: 'Threads_running=100,Threads_connected=500'. When status exceeds threshold, app throttles writes"`
+	CriticalLoad                     string `long:"critical-load" default:"" description:"Comma delimited status-name=threshold, same format as --max-load. When status exceeds threshold, app panics and quits"`
+	CriticalLoadIntervalMilliseconds int64  `long:"critical-load-interval-millis" default:"0" description:"When 0, migration immediately bails out upon meeting critical-load. When non-zero, a second check is done after given interval, and migration only bails out if 2nd check still meets critical load"`
+	CriticalLoadHibernateSeconds     int64  `long:"critical-load-hibernate-seconds" default:"0" description:"When nonzero, critical-load does not panic and bail out; instead, gh-ost goes into hibernate for the specified duration. It will not read/write anything to from/to any server"`
+	Quiet                            string `long:"quiet" default:"false" description:"quiet"`
+	Verbose                          string `long:"verbose" description:"false" description:"verbose"`
+	Debug                            string `long:"debug" default:"false" description:"debug mode (very verbose)"`
+	Stack                            string `long:"stack" default:"false" description:"add stack trace upon error"`
+	Help                             string `long:"help" default:"false" description:"Display usage"`
+	Version                          string `long:"version" default:"false" description:"Print version & exit"`
+	CheckFlag                        string `long:"check-flag" default:"false" description:"Check if another flag exists/supported. This allows for cross-version scripting. Exits with 0 when all additional provided flags exist, nonzero otherwise. You must provide (dummy) values for flags that require a value. Example: gh-ost --check-flag --cut-over-lock-timeout-seconds --nice-ratio 0"`
+	ForceTmpTableName                string `long:"force-table-names" default:"" description:"table name prefix to be used on the temporary tables"`
 }
 
 // ImportCommand type for import command
@@ -128,6 +217,185 @@ func (cmd *MigrateCommand) Execute(args []string) error {
 		return errors.WithStack(err)
 	}
 	return errors.WithStack(migrator.Migrate(schemaPath))
+}
+
+func acceptSignals(migrationContext *base.MigrationContext) {
+	c := make(chan os.Signal, 1)
+
+	signal.Notify(c, syscall.SIGHUP)
+	go func() {
+		for sig := range c {
+			switch sig {
+			case syscall.SIGHUP:
+				log.Println("Received SIGHUP. Reloading configuration")
+				if err := migrationContext.ReadConfigFile(); err != nil {
+					log.Println(err)
+				} else {
+					migrationContext.MarkPointOfInterest()
+				}
+			}
+		}
+	}()
+}
+
+func toBool(s string) bool {
+	b, _ := strconv.ParseBool(s)
+	return b
+}
+
+// Execute executes online migrate command
+func (cmd *OnlineMigrateCommand) Execute(args []string) error {
+	if toBool(cmd.CheckFlag) {
+		return nil
+	}
+
+	if cmd.DatabaseName == "" {
+		return errors.New("--database must be provided and database name must not be empty")
+	}
+	if cmd.OriginalTableName == "" {
+		return errors.New("--table must be provided and table name must not be empty")
+	}
+	if cmd.AlterStatement == "" {
+		return errors.New("--alter must be provided and statement must not be empty")
+	}
+
+	if toBool(cmd.AllowedRunningOnMaster) && toBool(cmd.TestOnReplica) {
+		return errors.New("--allow-on-master and --test-on-replica are mutually exclusive")
+	}
+	if toBool(cmd.AllowedRunningOnMaster) && toBool(cmd.MigrateOnReplica) {
+		return errors.New("--allow-on-master and --migrate-on-replica are mutually exclusive")
+	}
+	if toBool(cmd.MigrateOnReplica) && toBool(cmd.TestOnReplica) {
+		return errors.New("--migrate-on-replica and --test-on-replica are mutually exclusive")
+	}
+	if toBool(cmd.SwitchToRowBinlogFormat) && toBool(cmd.AssumeRBR) {
+		return errors.New("--switch-to-rbr and --assume-rbr are mutually exclusive")
+	}
+	if toBool(cmd.TestOnReplicaSkipReplicaStop) {
+		if !toBool(cmd.TestOnReplica) {
+			return errors.New("--test-on-replica-skip-replica-stop requires --test-on-replica to be enabled")
+		}
+		log.Println("--test-on-replica-skip-replica-stop enabled. We will not stop replication before cut-over. Ensure you have a plugin that does this.")
+	}
+	if cmd.MasterUser != "" && cmd.AssumeMasterHostname == "" {
+		return errors.New("--master-user requires --assume-master-host")
+	}
+	if cmd.MasterPassword != "" && cmd.AssumeMasterHostname == "" {
+		return errors.New("--master-password requires --assume-master-host")
+	}
+	if cmd.ReplicationLagQuery != "" {
+		log.Println("--replication-lag-query is deprecated")
+	}
+
+	ctx := base.NewMigrationContext()
+	ctx.Noop = !toBool(cmd.ExecuteFlag)
+	ctx.InspectorConnectionConfig.Key.Hostname = cmd.Host
+	ctx.AssumeMasterHostname = cmd.AssumeMasterHostname
+	ctx.InspectorConnectionConfig.Key.Port = cmd.Port
+	ctx.CliUser = cmd.User
+	ctx.CliPassword = cmd.Password
+	ctx.CliMasterUser = cmd.MasterUser
+	ctx.CliMasterPassword = cmd.MasterPassword
+	ctx.ConfigFile = cmd.ConfigFile
+	ctx.DatabaseName = cmd.DatabaseName
+	ctx.OriginalTableName = cmd.OriginalTableName
+	ctx.AlterStatement = cmd.AlterStatement
+	ctx.CountTableRows = toBool(cmd.CountTableRows)
+	ctx.ConcurrentCountTableRows = toBool(cmd.ConcurrentCountTableRows)
+	ctx.AllowedRunningOnMaster = toBool(cmd.AllowedRunningOnMaster)
+	ctx.AllowedMasterMaster = toBool(cmd.AllowedMasterMaster)
+	ctx.NullableUniqueKeyAllowed = toBool(cmd.NullableUniqueKeyAllowed)
+	ctx.ApproveRenamedColumns = toBool(cmd.ApproveRenamedColumns)
+	ctx.SkipRenamedColumns = toBool(cmd.SkipRenamedColumns)
+	ctx.IsTungsten = toBool(cmd.IsTungsten)
+	ctx.DiscardForeignKeys = toBool(cmd.DiscardForeignKeys)
+	ctx.SkipForeignKeyChecks = toBool(cmd.SkipForeignKeyChecks)
+	ctx.AliyunRDS = toBool(cmd.AliyunRDS)
+	ctx.GoogleCloudPlatform = toBool(cmd.GoogleCloudPlatform)
+	ctx.TestOnReplica = toBool(cmd.TestOnReplica)
+	ctx.TestOnReplicaSkipReplicaStop = toBool(cmd.TestOnReplicaSkipReplicaStop)
+	ctx.MigrateOnReplica = toBool(cmd.MigrateOnReplica)
+	ctx.OkToDropTable = toBool(cmd.OkToDropTable)
+	ctx.InitiallyDropOldTable = toBool(cmd.InitiallyDropOldTable)
+	ctx.InitiallyDropGhostTable = toBool(cmd.InitiallyDropGhostTable)
+	ctx.TimestampOldTable = toBool(cmd.TimestampOldTable)
+	ctx.ForceNamedCutOverCommand = toBool(cmd.ForceNamedCutOverCommand)
+	ctx.SwitchToRowBinlogFormat = toBool(cmd.SwitchToRowBinlogFormat)
+	ctx.AssumeRBR = toBool(cmd.AssumeRBR)
+	ctx.CutOverExponentialBackoff = toBool(cmd.CutOverExponentialBackoff)
+	ctx.ThrottleFlagFile = cmd.ThrottleFlagFile
+	ctx.ThrottleAdditionalFlagFile = cmd.ThrottleAdditionalFlagFile
+	ctx.PostponeCutOverFlagFile = cmd.PostponeCutOverFlagFile
+	ctx.PanicFlagFile = cmd.PanicFlagFile
+	ctx.DropServeSocket = toBool(cmd.DropServeSocket)
+	ctx.ServeSocketFile = cmd.ServeSocketFile
+	ctx.ServeTCPPort = cmd.ServeTCPPort
+	ctx.HooksPath = cmd.HooksPath
+	ctx.HooksHintMessage = cmd.HooksHintMessage
+	ctx.ReplicaServerId = cmd.ReplicaServerId
+	ctx.CriticalLoadIntervalMilliseconds = cmd.CriticalLoadIntervalMilliseconds
+	ctx.CriticalLoadHibernateSeconds = cmd.CriticalLoadHibernateSeconds
+	ctx.ForceTmpTableName = cmd.ForceTmpTableName
+
+	switch cmd.CutOver {
+	case "atomic", "default", "":
+		ctx.CutOverType = base.CutOverAtomic
+	case "two-step":
+		ctx.CutOverType = base.CutOverTwoStep
+	default:
+		return errors.Errorf("Unknown cut-over: %s", cmd.CutOver)
+	}
+	if err := ctx.ReadConfigFile(); err != nil {
+		return errors.WithStack(err)
+	}
+	if err := ctx.ReadThrottleControlReplicaKeys(cmd.ThrottleControlReplicas); err != nil {
+		return errors.WithStack(err)
+	}
+	if err := ctx.ReadMaxLoad(cmd.MaxLoad); err != nil {
+		return errors.WithStack(err)
+	}
+	if err := ctx.ReadCriticalLoad(cmd.CriticalLoad); err != nil {
+		return errors.WithStack(err)
+	}
+	if ctx.ServeSocketFile == "" {
+		ctx.ServeSocketFile = fmt.Sprintf("/tmp/gh-ost.%s.%s.sock", ctx.DatabaseName, ctx.OriginalTableName)
+	}
+	/*
+		if cmd.AskPass {
+			fmt.Println("Password:")
+			bytePassword, err := terminal.ReadPassword(int(syscall.Stdin))
+			if err != nil {
+				return errors.WithStack(err)
+			}
+			ctx.CliPassword = string(bytePassword)
+		}
+	*/
+	ctx.SetHeartbeatIntervalMilliseconds(cmd.HeartbeatIntervalMillis)
+	ctx.SetNiceRatio(cmd.NiceRatio)
+	ctx.SetChunkSize(cmd.ChunkSize)
+	ctx.SetDMLBatchSize(cmd.DmlBatchSize)
+	ctx.SetMaxLagMillisecondsThrottleThreshold(cmd.MaxLagMillis)
+	ctx.SetThrottleQuery(cmd.ThrottleQuery)
+	ctx.SetThrottleHTTP(cmd.ThrottleHTTP)
+	ctx.SetDefaultNumRetries(cmd.DefaultRetries)
+	ctx.ApplyCredentials()
+	if err := ctx.SetCutOverLockTimeoutSeconds(cmd.CutOverLockTimeoutSeconds); err != nil {
+		return errors.WithStack(err)
+	}
+	if err := ctx.SetExponentialBackoffMaxInterval(cmd.ExponentialBackoffMaxInterval); err != nil {
+		return errors.WithStack(err)
+	}
+
+	log.Println("starting gh-ost")
+	acceptSignals(ctx)
+
+	migrator := logic.NewMigrator(ctx)
+	if err := migrator.Migrate(); err != nil {
+		migrator.ExecOnFailureHook()
+		return errors.WithStack(err)
+	}
+	fmt.Fprintf(os.Stdout, "# Done\n")
+	return nil
 }
 
 func (cmd *ImportCommand) schemaFromTableName(tableName string) (vtparser.Statement, error) {
