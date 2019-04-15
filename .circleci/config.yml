@@ -3,13 +3,15 @@ jobs:
   test:
     working_directory: /go/src/go.knocknote.io/octillery
     docker:
-    - image: golang:1.11
+    - image: golang:1.12
+      environment:
+        GO111MODULE: "on"
     steps:
       - checkout
       - run:
           name: Run go get
           command: |
-            go get ./...
+            go mod download
       - run:
           name: Install SQLite plugin
           command: |
