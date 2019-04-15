@@ -531,16 +531,23 @@ func (cmd *InstallCommand) lookupOctillery() ([]string, error) {
 	if _, err := os.Stat(vendorPath); !os.IsNotExist(err) {
 		installPaths = append(installPaths, vendorPath)
 	}
-	// Second, lookup $GOPATH/src/go.knocknote.io/octillery
-	underGoPath := filepath.Join(os.Getenv("GOPATH"), "src", libraryPath)
-	if _, err := os.Stat(underGoPath); !os.IsNotExist(err) {
-		installPaths = append(installPaths, underGoPath)
+	goPath := os.Getenv("GOPATH")
+	if goPath == "" {
+		goPath = filepath.Join(os.Getenv("HOME"), "go")
 	}
-	// Third, lookup $GOPATH/pkg/mod/go.knocknote.io/octillery@*
-	modPathPrefix := filepath.Join(os.Getenv("GOPATH"), "pkg", "mod", libraryPath)
-	modPaths, err := filepath.Glob(modPathPrefix + "@*")
-	if err == nil {
-		installPaths = append(installPaths, modPaths...)
+	if os.Getenv("GO111MODULE") == "on" {
+		// lookup $GOPATH/pkg/mod/go.knocknote.io/octillery@*
+		modPathPrefix := filepath.Join(goPath, "pkg", "mod", libraryPath)
+		modPaths, err := filepath.Glob(modPathPrefix + "@*")
+		if err == nil {
+			installPaths = append(installPaths, modPaths...)
+		}
+	} else {
+		// lookup $GOPATH/src/go.knocknote.io/octillery
+		underGoPath := filepath.Join(goPath, "src", libraryPath)
+		if _, err := os.Stat(underGoPath); !os.IsNotExist(err) {
+			installPaths = append(installPaths, underGoPath)
+		}
 	}
 	if len(installPaths) == 0 {
 		return installPaths, errors.New("cannot find 'go.knocknote.io/octillery' library")
