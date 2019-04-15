@@ -9,9 +9,13 @@ jobs:
     steps:
       - checkout
       - run:
-          name: Run go get
+          name: Download modules
           command: |
             go mod download
+      - run:
+          name: Install octillery CLI
+          command: |
+            go get ./cmd/octillery
       - run:
           name: Install SQLite plugin
           command: |
