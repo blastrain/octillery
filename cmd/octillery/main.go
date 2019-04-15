@@ -535,18 +535,17 @@ func (cmd *InstallCommand) lookupOctillery() ([]string, error) {
 	if goPath == "" {
 		goPath = filepath.Join(os.Getenv("HOME"), "go")
 	}
+	// Second, lookup $GOPATH/src/go.knocknote.io/octillery
+	underGoPath := filepath.Join(goPath, "src", libraryPath)
+	if _, err := os.Stat(underGoPath); !os.IsNotExist(err) {
+		installPaths = append(installPaths, underGoPath)
+	}
 	if os.Getenv("GO111MODULE") == "on" {
 		// lookup $GOPATH/pkg/mod/go.knocknote.io/octillery@*
 		modPathPrefix := filepath.Join(goPath, "pkg", "mod", libraryPath)
 		modPaths, err := filepath.Glob(modPathPrefix + "@*")
 		if err == nil {
 			installPaths = append(installPaths, modPaths...)
-		}
-	} else {
-		// lookup $GOPATH/src/go.knocknote.io/octillery
-		underGoPath := filepath.Join(goPath, "src", libraryPath)
-		if _, err := os.Stat(underGoPath); !os.IsNotExist(err) {
-			installPaths = append(installPaths, underGoPath)
 		}
 	}
 	if len(installPaths) == 0 {
