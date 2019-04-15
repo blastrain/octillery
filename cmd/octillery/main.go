@@ -519,41 +519,36 @@ func (cmd *ConsoleCommand) Execute(args []string) error {
 	return nil
 }
 
-func (cmd *InstallCommand) lookupOctillery() (string, error) {
+func (cmd *InstallCommand) lookupOctillery() ([]string, error) {
 	libraryPath := filepath.Join("go.knocknote.io", "octillery")
+	installPaths := []string{}
 	cwd, err := os.Getwd()
 	if err != nil {
-		return "", errors.WithStack(err)
+		return installPaths, errors.WithStack(err)
 	}
 	// First, lookup vendor/go.knocknote.io/octillery
 	vendorPath := filepath.Join(cwd, "vendor", libraryPath)
 	if _, err := os.Stat(vendorPath); !os.IsNotExist(err) {
-		return vendorPath, nil
+		installPaths = append(installPaths, vendorPath)
 	}
 	// Second, lookup $GOPATH/src/go.knocknote.io/octillery
 	underGoPath := filepath.Join(os.Getenv("GOPATH"), "src", libraryPath)
 	if _, err := os.Stat(underGoPath); !os.IsNotExist(err) {
-		return underGoPath, nil
+		installPaths = append(installPaths, underGoPath)
 	}
-	return "", errors.New("cannot find 'go.knocknote.io/octillery' library")
+	// Third, lookup $GOPATH/pkg/mod/go.knocknote.io/octillery@*
+	modPathPrefix := filepath.Join(os.Getenv("GOPATH"), "pkg", "mod", libraryPath)
+	modPaths, err := filepath.Glob(modPathPrefix + "@*")
+	if err == nil {
+		installPaths = append(installPaths, modPaths...)
+	}
+	if len(installPaths) == 0 {
+		return installPaths, errors.New("cannot find 'go.knocknote.io/octillery' library")
+	}
+	return installPaths, nil
 }
 
-// Execute executes install command
-func (cmd *InstallCommand) Execute(args []string) error {
-	var sourcePath string
-	if len(args) > 0 {
-		path, err := filepath.Abs(args[0])
-		if err != nil {
-			return errors.WithStack(err)
-		}
-		sourcePath = path
-	} else {
-		path, err := cmd.lookupOctillery()
-		if err != nil {
-			return errors.WithStack(err)
-		}
-		sourcePath = path
-	}
+func (cmd *InstallCommand) installToPath(sourcePath string) error {
 	adapterBasePath := filepath.Join(sourcePath, "connection", "adapter", "plugin")
 	var adapterPath string
 	if cmd.MySQLAdapter {
@@ -567,10 +562,38 @@ func (cmd *InstallCommand) Execute(args []string) error {
 	if err != nil {
 		return errors.WithStack(err)
 	}
+	pluginDir := filepath.Join(sourcePath, "plugin")
+	if err := os.Chmod(pluginDir, 0755); err != nil {
+		return errors.WithStack(err)
+	}
 	baseName := filepath.Base(adapterPath)
-	pluginPath := filepath.Join(sourcePath, "plugin", baseName)
+	pluginPath := filepath.Join(pluginDir, baseName)
 	log.Printf("install to %s\n", pluginPath)
 	return errors.WithStack(ioutil.WriteFile(pluginPath, adapterData, 0644))
+}
+
+// Execute executes install command
+func (cmd *InstallCommand) Execute(args []string) error {
+	if len(args) > 0 {
+		path, err := filepath.Abs(args[0])
+		if err != nil {
+			return errors.WithStack(err)
+		}
+		if err := cmd.installToPath(path); err != nil {
+			return errors.WithStack(err)
+		}
+		return nil
+	}
+	paths, err := cmd.lookupOctillery()
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	for _, path := range paths {
+		if err := cmd.installToPath(path); err != nil {
+			return errors.WithStack(err)
+		}
+	}
+	return nil
 }
 
 // Execute executes shard command
