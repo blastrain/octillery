@@ -39,12 +39,13 @@ var (
 
 func importDatabaseSQLPackagePatterns() []*regexp.Regexp {
 	patterns := []*regexp.Regexp{}
-	basePath := filepath.Join("go.knocknote.io", "octillery")
+	basePath := filepath.Join("go.knocknote.io", "octillery.*")
 	for _, path := range []string{
 		"algorithm",
 		"connection",
 		"database",
 		"exec",
+		"migrator",
 		"octillery\\.go",
 		"plugin",
 		"printer",
