@@ -75,11 +75,17 @@ func (proxy *Tx) AfterCommitCallback(success func() error, failure func(bool, []
 
 // WriteQueries informations of executed INSERT/UPDATE/DELETE query
 func (proxy *Tx) WriteQueries() []*connection.QueryLog {
+	if proxy.tx == nil {
+		return []*connection.QueryLog{}
+	}
 	return proxy.tx.WriteQueries
 }
 
 // ReadQueries informations of executed SELECT query
 func (proxy *Tx) ReadQueries() []*connection.QueryLog {
+	if proxy.tx == nil {
+		return []*connection.QueryLog{}
+	}
 	return proxy.tx.ReadQueries
 }
 
