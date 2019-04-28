@@ -607,6 +607,12 @@ func TestTransaction(t *testing.T) {
 	defer db.Close()
 	tx, err := db.Begin()
 	checkErr(t, err)
+	if readQueries := tx.ReadQueries(); len(readQueries) > 0 {
+		t.Fatal("invalid read queries")
+	}
+	if writeQueries := tx.WriteQueries(); len(writeQueries) > 0 {
+		t.Fatal("invalid write queries")
+	}
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	t.Run("prepare context", func(t *testing.T) {
