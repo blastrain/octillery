@@ -58,6 +58,22 @@ func TestDDL(t *testing.T) {
 	})
 }
 
+func TestSHOW(t *testing.T) {
+	parser, err := New()
+	checkErr(t, err)
+	t.Run("show create table", func(t *testing.T) {
+		query, err := parser.Parse("show create table users")
+		fmt.Printf("show.table:%v\n", query.Table())
+		checkErr(t, err)
+		if query.QueryType() != Show {
+			t.Fatal("cannot parse 'show' query")
+		}
+		if query.Table() != "users" {
+			t.Fatal("cannot parse 'show' query")
+		}
+	})
+}
+
 func validateSelectQuery(t *testing.T, query Query) {
 	if query.QueryType() != Select {
 		t.Fatal("cannot parse 'select' query")
@@ -542,7 +558,7 @@ func TestERROR(t *testing.T) {
 		log.Println(err)
 	})
 	t.Run("unsupport query", func(t *testing.T) {
-		query, err := parser.Parse("show create table users")
+		query, err := parser.Parse("show slave status")
 		if query != nil {
 			t.Fatal("invalid query value")
 		}

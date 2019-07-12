@@ -16,6 +16,8 @@ github.com/juju/testing v0.0.0-20190415054131-a282c42ba059 h1:vsqkD58dFysYgUZ8XH
 github.com/juju/testing v0.0.0-20190415054131-a282c42ba059/go.mod h1:63prj8cnj0tU0S9OHjGJn+b1h0ZghCndfnbQolrYTwA=
 github.com/knocknote/vitess-sqlparser v0.0.0-20181121014348-1003c43917a3 h1:Nk/bqRokAz+B4j+18CKyAYhkf/scbbY7anWdSZFHjqI=
 github.com/knocknote/vitess-sqlparser v0.0.0-20181121014348-1003c43917a3/go.mod h1:bF2oGXw2Ex/jIPGFPaFzEf8BtNRSBWc81ni+N9UaW5Q=
+github.com/knocknote/vitess-sqlparser v0.0.0-20190712090058-385243f72d33 h1:3//yyn1X4pIytNgAA3a1a7CQJm2w3WNVNCGLBQrPcPA=
+github.com/knocknote/vitess-sqlparser v0.0.0-20190712090058-385243f72d33/go.mod h1:bF2oGXw2Ex/jIPGFPaFzEf8BtNRSBWc81ni+N9UaW5Q=
 github.com/mattn/go-colorable v0.0.0-20160220075935-9cbef7c35391 h1:x4vT4RoTH2BNkPx0LgrBKeFuPQPviK1aSAIWG6ruc+Y=
 github.com/mattn/go-colorable v0.0.0-20160220075935-9cbef7c35391/go.mod h1:9vuHe8Xs5qXnSaW/c/ABM9alt+Vo+STaOChaDxuIBZU=
 github.com/mattn/go-isatty v0.0.0-20151211000621-56b76bdf51f7 h1:owMyzMR4QR+jSdlfkX9jPU3rsby4++j99BfbtgVr6ZY=

@@ -10,7 +10,7 @@ require (
 	github.com/juju/errors v0.0.0-20170703010042-c7d06af17c68 // indirect
 	github.com/juju/loggo v0.0.0-20190212223446-d976af380377 // indirect
 	github.com/juju/testing v0.0.0-20190415054131-a282c42ba059 // indirect
-	github.com/knocknote/vitess-sqlparser v0.0.0-20181121014348-1003c43917a3
+	github.com/knocknote/vitess-sqlparser v0.0.0-20190712090058-385243f72d33
 	github.com/mattn/go-colorable v0.0.0-20160220075935-9cbef7c35391 // indirect
 	github.com/mattn/go-isatty v0.0.0-20151211000621-56b76bdf51f7 // indirect
 	github.com/mattn/go-sqlite3 v0.0.0-20170407154627-cf7286f069c3
