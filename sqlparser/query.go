@@ -32,6 +32,9 @@ const (
 	CreateTable
 	// TruncateTable 'TRUNCATE TABLE' query type
 	TruncateTable
+	// Show 'SHOW' query type
+	Show
+
 )
 
 func (t QueryType) IsWriteQuery() bool {

@@ -382,6 +382,12 @@ func (p *Parser) parseDDLStmt(stmt *vtparser.DDL, queryBase *QueryBase) (Query, 
 	return queryBase, nil
 }
 
+func (p *Parser) parseShowStmt(stmt *vtparser.Show, queryBase *QueryBase) (Query, error) {
+	queryBase.Type = Show
+	queryBase.TableName = stmt.TableName
+	return queryBase, nil
+}
+
 func (p *Parser) formatQuery(query string) string {
 	formattedQuery := replaceDoubleQuote.ReplaceAllString(query, "`")
 	formattedQuery = removeSemiColon.ReplaceAllString(formattedQuery, "")
@@ -441,6 +447,12 @@ func (p *Parser) Parse(queryText string, args ...interface{}) (Query, error) {
 		return query, nil
 	case *vtparser.TruncateTable:
 		query, err := p.parseTruncateTable(stmt, queryBase)
+		if err != nil {
+			return nil, errors.WithStack(err)
+		}
+		return query, nil
+	case *vtparser.Show:
+		query, err := p.parseShowStmt(stmt, queryBase)
 		if err != nil {
 			return nil, errors.WithStack(err)
 		}
