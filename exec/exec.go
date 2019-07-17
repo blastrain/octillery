@@ -117,6 +117,8 @@ func NewQueryExecutor(ctx context.Context, conn *connection.DBConnection, tx *co
 		return NewDeleteQueryExecutor(base)
 	case sqlparser.Drop:
 		return NewDropQueryExecutor(base)
+	case sqlparser.Show:
+		return NewShowQueryExecutor(base)
 	default:
 	}
 	return nil
