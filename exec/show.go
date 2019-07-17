@@ -2,10 +2,8 @@ package exec
 
 import (
 	"database/sql"
-	"strings"
 
 	"github.com/pkg/errors"
-	"go.knocknote.io/octillery/debug"
 	"go.knocknote.io/octillery/sqlparser"
 )
 
@@ -19,42 +17,47 @@ func NewShowQueryExecutor(base *QueryExecutorBase) *ShowQueryExecutor {
 	return &ShowQueryExecutor{base}
 }
 
-// Query doesn't support in ShowQueryExecutor, returns always error.
+// Query show multiple rows from any one of shards.
 func (e *ShowQueryExecutor) Query() ([]*sql.Rows, error) {
-	return nil, errors.New("ShowQueryExecutor cannot invoke Query()")
-}
-
-// QueryRow doesn't support in ShowQueryExecutor, returns always error.
-func (e *ShowQueryExecutor) QueryRow() (*sql.Row, error) {
-	return nil, errors.New("ShowQueryExecutor cannot invoke QueryRow()")
-}
-
-// Exec executes `SHOW TABLE` DDL for shards
-func (e *ShowQueryExecutor) Exec() (sql.Result, error) {
-	debug.Printf("show table for shards")
 	query, ok := e.query.(*sqlparser.QueryBase)
 	if !ok {
-		return nil, errors.New("cannot convert sqlparser.Query to *sqlparser.QueryBase")
+		return nil, errors.New("cannot convert to sqlparser.Query to *sqlparser.QueryBase")
 	}
-	var totalAffectedRows int64
-	errs := []string{}
+
+	oneRows := make([]*sql.Rows, 1)
 	for _, shardConn := range e.conn.ShardConnections.AllShard() {
-		result, err := shardConn.Connection.Exec(query.Text, query.Args...)
+		rows, err := e.execQuery(shardConn, query.Text, query.Args...)
 		if err != nil {
-			errs = append(errs, err.Error())
-			continue
+			return nil, errors.WithStack(err)
 		}
-		if result != nil {
-			affectedRows, err := result.(sql.Result).RowsAffected()
-			if err != nil {
-				errs = append(errs, err.Error())
-			}
-			totalAffectedRows = totalAffectedRows + affectedRows
+		oneRows[0] = rows
+		break
+	}
+
+	return oneRows, nil
+}
+
+// QueryRow show row from any one of shards.
+func (e *ShowQueryExecutor) QueryRow() (*sql.Row, error) {
+	query, ok := e.query.(*sqlparser.QueryBase)
+	if !ok {
+		return nil, errors.New("cannot convert to sqlparser.Query to *sqlparser.QueryBase")
+	}
+
+	var row *sql.Row
+	for _, shardConn := range e.conn.ShardConnections.AllShard() {
+		tmpRow, err := e.execQueryRow(shardConn, query.Text, query.Args...)
+		if err != nil {
+			return nil, errors.WithStack(err)
 		}
+		row = tmpRow
+		break
 	}
-	if len(errs) > 0 {
-		return nil, errors.New(strings.Join(errs, ":"))
-	}
-	debug.Printf("totalAffectedRows = %d", totalAffectedRows)
-	return &mergedResult{affectedRows: totalAffectedRows}, nil
+
+	return row, nil
+}
+
+// Exec doesn't support in ShowQueryExecutor, returns always error.
+func (e *ShowQueryExecutor) Exec() (sql.Result, error) {
+	return nil, errors.New("ShowQueryExecutor cannot invoke Exec()")
 }
