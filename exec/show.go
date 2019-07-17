@@ -24,17 +24,15 @@ func (e *ShowQueryExecutor) Query() ([]*sql.Rows, error) {
 		return nil, errors.New("cannot convert to sqlparser.Query to *sqlparser.QueryBase")
 	}
 
-	oneRows := make([]*sql.Rows, 1)
 	for _, shardConn := range e.conn.ShardConnections.AllShard() {
 		rows, err := e.execQuery(shardConn, query.Text, query.Args...)
 		if err != nil {
 			return nil, errors.WithStack(err)
 		}
-		oneRows[0] = rows
-		break
+		return []*sql.Rows{rows}, nil
 	}
 
-	return oneRows, nil
+	return nil, nil
 }
 
 // QueryRow show row from any one of shards.
@@ -44,17 +42,15 @@ func (e *ShowQueryExecutor) QueryRow() (*sql.Row, error) {
 		return nil, errors.New("cannot convert to sqlparser.Query to *sqlparser.QueryBase")
 	}
 
-	var row *sql.Row
 	for _, shardConn := range e.conn.ShardConnections.AllShard() {
-		tmpRow, err := e.execQueryRow(shardConn, query.Text, query.Args...)
+		row, err := e.execQueryRow(shardConn, query.Text, query.Args...)
 		if err != nil {
 			return nil, errors.WithStack(err)
 		}
-		row = tmpRow
-		break
+		return row, nil
 	}
 
-	return row, nil
+	return nil, nil
 }
 
 // Exec doesn't support in ShowQueryExecutor, returns always error.
