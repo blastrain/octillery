@@ -204,24 +204,86 @@ func (p *Parser) replaceInsertValueFromValArg(query *InsertQuery, colIndex int, 
 				Val:  []byte(arg),
 			}
 		}
-	case int, int8, int16, int32, int64:
+	case int, *int, int8, *int8, int16, *int16, int32, *int32, int64, *int64:
+		var assertedArg int64
+		if i, ok := arg.(int); ok {
+			assertedArg = int64(i)
+		}
+		if i, ok := arg.(*int); ok {
+			assertedArg = int64(*i)
+		}
+		if i, ok := arg.(int8); ok {
+			assertedArg = int64(i)
+		}
+		if i, ok := arg.(*int8); ok {
+			assertedArg = int64(*i)
+		}
+		if i, ok := arg.(int16); ok {
+			assertedArg = int64(i)
+		}
+		if i, ok := arg.(*int16); ok {
+			assertedArg = int64(*i)
+		}
+		if i, ok := arg.(int32); ok {
+			assertedArg = int64(i)
+		}
+		if i, ok := arg.(*int32); ok {
+			assertedArg = int64(*i)
+		}
+		if i, ok := arg.(int64); ok {
+			assertedArg = i
+		}
+		if i, ok := arg.(*int64); ok {
+			assertedArg = *i
+		}
 		if colName == p.shardKeyColumnName(query.TableName) {
-			query.ShardKeyID = Identifier(arg.(int64))
+			query.ShardKeyID = Identifier(assertedArg)
 		}
 		query.ColumnValues[colIndex] = func() *vtparser.SQLVal {
 			return &vtparser.SQLVal{
 				Type: vtparser.IntVal,
-				Val:  []byte(fmt.Sprintf("%d", arg)),
+				Val:  []byte(fmt.Sprintf("%d", assertedArg)),
 			}
 		}
-	case uint, uint8, uint16, uint32, uint64:
+	case uint, *uint, uint8, *uint8, uint16, *uint16, uint32, *uint32, uint64, *uint64:
+		var assertedArg uint64
+		if i, ok := arg.(uint); ok {
+			assertedArg = uint64(i)
+		}
+		if i, ok := arg.(*uint); ok {
+			assertedArg = uint64(*i)
+		}
+		if i, ok := arg.(uint8); ok {
+			assertedArg = uint64(i)
+		}
+		if i, ok := arg.(*uint8); ok {
+			assertedArg = uint64(*i)
+		}
+		if i, ok := arg.(uint16); ok {
+			assertedArg = uint64(i)
+		}
+		if i, ok := arg.(*uint16); ok {
+			assertedArg = uint64(*i)
+		}
+		if i, ok := arg.(uint32); ok {
+			assertedArg = uint64(i)
+		}
+		if i, ok := arg.(*uint32); ok {
+			assertedArg = uint64(*i)
+		}
+		if i, ok := arg.(uint64); ok {
+			assertedArg = i
+		}
+		if i, ok := arg.(*uint64); ok {
+			assertedArg = *i
+		}
 		if colName == p.shardKeyColumnName(query.TableName) {
-			query.ShardKeyID = Identifier(int64(arg.(uint64)))
+			query.ShardKeyID = Identifier(assertedArg)
 		}
 		query.ColumnValues[colIndex] = func() *vtparser.SQLVal {
 			return &vtparser.SQLVal{
 				Type: vtparser.IntVal,
-				Val:  []byte(fmt.Sprintf("%d", arg)),
+				Val:  []byte(fmt.Sprintf("%d", assertedArg)),
 			}
 		}
 	case time.Time:
