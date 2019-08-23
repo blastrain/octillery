@@ -2,12 +2,13 @@ package sqlparser
 
 import (
 	"fmt"
-	"go.knocknote.io/octillery/config"
-	"go.knocknote.io/octillery/path"
 	"log"
 	"path/filepath"
 	"testing"
 	"time"
+
+	"go.knocknote.io/octillery/config"
+	"go.knocknote.io/octillery/path"
 )
 
 func checkErr(t *testing.T, err error) {
