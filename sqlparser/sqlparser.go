@@ -224,18 +224,19 @@ func (p *Parser) replaceInsertValueFromValArg(query *InsertQuery, colIndex int, 
 				Val:  []byte(fmt.Sprintf("%d", arg)),
 			}
 		}
-	case time.Time:
+	case time.Time, *time.Time:
 		query.ColumnValues[colIndex] = func() *vtparser.SQLVal {
-			return &vtparser.SQLVal{
-				Type: vtparser.StrVal,
-				Val:  []byte(arg.Format("2006-01-02 15:04:05")),
+			var strTime string
+			layout := "2006-01-02 15:04:05"
+			if t, ok := arg.(time.Time); ok {
+				strTime = t.Format(layout)
 			}
-		}
-	case *time.Time:
-		query.ColumnValues[colIndex] = func() *vtparser.SQLVal {
+			if t, ok := arg.(*time.Time); ok {
+				strTime = t.Format(layout)
+			}
 			return &vtparser.SQLVal{
 				Type: vtparser.StrVal,
-				Val:  []byte(arg.Format("2006-01-02 15:04:05")),
+				Val:  []byte(strTime),
 			}
 		}
 	case nil:
