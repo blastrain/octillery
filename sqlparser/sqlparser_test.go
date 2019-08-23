@@ -342,11 +342,36 @@ func testInsertWithNotShardingTable(t *testing.T) {
 			t.Fatal("cannot parse column values")
 		}
 	})
-	t.Run("insert query with placeholder", func(t *testing.T) {
 		//text := fmt.Sprintf("insert into %s(id, name) values (null, ?)", tableName)
+	t.Run("insert query with placeholder time is struct", func(t *testing.T) {
 		text := fmt.Sprintf("insert into %s(id, name, created_at) values (?, ?, ?)", tableName)
 		createdAt, _ := time.Parse("2006-01-02 15:04:05", "2019-08-01 12:00:00")
 		query, err := parser.Parse(text, nil, "bob", createdAt)
+		checkErr(t, err)
+		if query.QueryType() != Insert {
+			t.Fatal("cannot parse 'insert' query")
+		}
+		if query.Table() != tableName {
+			t.Fatal("cannot parse 'insert' query")
+		}
+		insertQuery := query.(*InsertQuery)
+		if len(insertQuery.ColumnValues) != 3 {
+			t.Fatal("cannot parse")
+		}
+		if string(insertQuery.ColumnValues[0]().Val) != "null" {
+			t.Fatal("cannot parse column values")
+		}
+		if string(insertQuery.ColumnValues[1]().Val) != "bob" {
+			t.Fatal("cannot parse column values")
+		}
+		if string(insertQuery.ColumnValues[2]().Val) != "2019-08-01 12:00:00" {
+			t.Fatal("cannot parse column values")
+		}
+	})
+	t.Run("insert query with placeholder time is pointer", func(t *testing.T) {
+		text := fmt.Sprintf("insert into %s(id, name, created_at) values (?, ?, ?)", tableName)
+		createdAt, _ := time.Parse("2006-01-02 15:04:05", "2019-08-01 12:00:00")
+		query, err := parser.Parse(text, nil, "bob", &createdAt)
 		checkErr(t, err)
 		if query.QueryType() != Insert {
 			t.Fatal("cannot parse 'insert' query")
