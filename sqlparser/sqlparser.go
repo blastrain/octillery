@@ -5,6 +5,7 @@ import (
 	"reflect"
 	"regexp"
 	"strconv"
+	"time"
 
 	vtparser "github.com/knocknote/vitess-sqlparser/sqlparser"
 	"github.com/pkg/errors"
@@ -180,6 +181,8 @@ func (p *Parser) parseSelectStmt(stmt *vtparser.Select, queryBase *QueryBase) (Q
 }
 
 func (p *Parser) replaceInsertValueFromValArg(query *InsertQuery, colIndex int, colName string, valArg string) error {
+	fmt.Println("Parser.replaceInsertValueFromValArg() Start!")
+	fmt.Printf("colName:%v\n", colName)
 	r := regexp.MustCompile(`:v([0-9]+)`)
 	results := r.FindAllStringSubmatch(valArg, -1)
 	if len(results) == 0 || len(results[0]) == 0 {
@@ -188,15 +191,18 @@ func (p *Parser) replaceInsertValueFromValArg(query *InsertQuery, colIndex int, 
 
 	index, err := strconv.Atoi(results[0][1])
 	if err != nil {
+		fmt.Println("err := strconv.Atoi(results[0][1]) != nil")
 		return errors.WithStack(err)
 	}
 	if len(query.Args) <= index-1 {
+		fmt.Println("len(query.Args) <= index-1")
 		return nil
 	}
 
 	queryArg := query.Args[index-1]
 	switch arg := queryArg.(type) {
 	case string:
+		fmt.Printf("arg:%v\n", arg)
 		query.ColumnValues[colIndex] = func() *vtparser.SQLVal {
 			return &vtparser.SQLVal{
 				Type: vtparser.StrVal,
@@ -223,13 +229,28 @@ func (p *Parser) replaceInsertValueFromValArg(query *InsertQuery, colIndex int, 
 				Val:  []byte(fmt.Sprintf("%d", arg)),
 			}
 		}
+	case time.Time:
+		query.ColumnValues[colIndex] = func() *vtparser.SQLVal {
+			return &vtparser.SQLVal{
+				Type: vtparser.StrVal,
+				Val:  []byte(arg.Format("2006-01-02 15:04:05")),
+			}
+		}
+	case nil:
+		query.ColumnValues[colIndex] = func() *vtparser.SQLVal {
+			return &vtparser.SQLVal{
+				Type: vtparser.IntVal,
+				Val:  []byte("null"),
+			}
+		}
 	default:
-		debug.Printf("arg type = %s", reflect.TypeOf(arg))
+		fmt.Printf("arg type = %s", reflect.TypeOf(arg))
 	}
 	return nil
 }
 
 func (p *Parser) replaceInsertValue(query *InsertQuery, colIndex int, colName string) error {
+	fmt.Println("Parser.replaceInsertValue() Start!")
 	if colName == p.shardColumnName(query.TableName) {
 		query.ColumnValues[colIndex] = func() *vtparser.SQLVal {
 			return &vtparser.SQLVal{
@@ -242,9 +263,17 @@ func (p *Parser) replaceInsertValue(query *InsertQuery, colIndex int, colName st
 	columnValues := query.Stmt.Rows.(vtparser.Values)[0]
 	colValue, ok := columnValues[colIndex].(*vtparser.SQLVal)
 	if !ok {
+		fmt.Println("!ok")
+		//query.ColumnValues[colIndex] = func() *vtparser.SQLVal {
+		//	return &vtparser.SQLVal{
+		//		Type: vtparser.NULL,
+		//		Val:  []byte{},
+		//	}
+		//}
 		return nil
 	}
 	if colValue.Type == vtparser.ValArg {
+		fmt.Printf("string(colValue.Val):%v\n", string(colValue.Val))
 		if err := p.replaceInsertValueFromValArg(query, colIndex, colName, string(colValue.Val)); err != nil {
 			return errors.WithStack(err)
 		}
@@ -259,6 +288,7 @@ func (p *Parser) replaceInsertValue(query *InsertQuery, colIndex int, colName st
 }
 
 func (p *Parser) parseInsertStmt(stmt *vtparser.Insert, queryBase *QueryBase) (Query, error) {
+	fmt.Println("Parser.parseInsertStmt() Start!")
 	queryBase.Type = Insert
 	queryBase.TableName = stmt.Table.Name.String()
 	query := NewInsertQuery(queryBase, stmt)
@@ -267,6 +297,7 @@ func (p *Parser) parseInsertStmt(stmt *vtparser.Insert, queryBase *QueryBase) (Q
 		if err := p.replaceInsertValue(query, idx, colName); err != nil {
 			return nil, errors.WithStack(err)
 		}
+		fmt.Printf("query:%v\n", query.String())
 	}
 	return query, nil
 }
