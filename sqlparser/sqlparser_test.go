@@ -342,7 +342,6 @@ func testInsertWithNotShardingTable(t *testing.T) {
 			t.Fatal("cannot parse column values")
 		}
 	})
-		//text := fmt.Sprintf("insert into %s(id, name) values (null, ?)", tableName)
 	t.Run("insert query with placeholder time is struct", func(t *testing.T) {
 		text := fmt.Sprintf("insert into %s(id, name, created_at) values (?, ?, ?)", tableName)
 		createdAt, _ := time.Parse("2006-01-02 15:04:05", "2019-08-01 12:00:00")
