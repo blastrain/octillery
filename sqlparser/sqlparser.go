@@ -264,6 +264,12 @@ func (p *Parser) replaceInsertValueFromValArg(query *InsertQuery, colIndex int, 
 			query.ShardKeyID = Identifier(*arg)
 		}
 		query.ColumnValues[colIndex] = createSQLIntTypeVal(*arg)
+	case bool:
+		val := convertBoolToInt8(arg)
+		query.ColumnValues[colIndex] = createSQLIntTypeVal(val)
+	case *bool:
+		val := convertBoolToInt8(*arg)
+		query.ColumnValues[colIndex] = createSQLIntTypeVal(val)
 	case time.Time:
 		query.ColumnValues[colIndex] = func() *vtparser.SQLVal {
 			return &vtparser.SQLVal{
@@ -543,4 +549,11 @@ func createSQLIntTypeVal(val interface{}) func() *vtparser.SQLVal {
 		}
 
 	}
+}
+
+func convertBoolToInt8(val bool) (res int8) {
+	if val {
+		res = 1
+	}
+	return res
 }

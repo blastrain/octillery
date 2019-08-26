@@ -133,7 +133,7 @@ func testInsertWithShardColumnTable(t *testing.T, tableName string) {
 	parser, err := New()
 	checkErr(t, err)
 	t.Run("simple insert query", func(t *testing.T) {
-		text := fmt.Sprintf("insert into %s(id, name, created_at) values (null, 'bob', '2019-08-01 12:00:00')", tableName)
+		text := fmt.Sprintf("insert into %s(id, name, is_deleted, created_at) values (null, 'bob', 0, '2019-08-01 12:00:00')", tableName)
 		query, err := parser.Parse(text)
 		checkErr(t, err)
 		if query.QueryType() != Insert {
@@ -143,7 +143,7 @@ func testInsertWithShardColumnTable(t *testing.T, tableName string) {
 			t.Fatal("cannot parse 'insert' query")
 		}
 		insertQuery := query.(*InsertQuery)
-		if len(insertQuery.ColumnValues) != 3 {
+		if len(insertQuery.ColumnValues) != 4 {
 			t.Fatal("cannot parse")
 		}
 		insertQuery.SetNextSequenceID(1) // simulate sequencer's action
@@ -156,11 +156,14 @@ func testInsertWithShardColumnTable(t *testing.T, tableName string) {
 		if insertQuery.ColumnValues[2] != nil {
 			t.Fatal("cannot parse column values")
 		}
+		if insertQuery.ColumnValues[3] != nil {
+			t.Fatal("cannot parse column values")
+		}
 	})
 	t.Run("insert query with placeholder", func(t *testing.T) {
-		text := fmt.Sprintf("insert into %s(id, name, created_at) values (?, ?, ?)", tableName)
+		text := fmt.Sprintf("insert into %s(id, name, is_deleted, created_at) values (?, ?, ?, ?)", tableName)
 		createdAt, _ := time.Parse("2006-01-02 15:04:05", "2019-08-01 12:00:00")
-		query, err := parser.Parse(text, nil, "bob", createdAt)
+		query, err := parser.Parse(text, nil, "bob", false, createdAt)
 		checkErr(t, err)
 		if query.QueryType() != Insert {
 			t.Fatal("cannot parse 'insert' query")
@@ -169,7 +172,7 @@ func testInsertWithShardColumnTable(t *testing.T, tableName string) {
 			t.Fatal("cannot parse 'insert' query")
 		}
 		insertQuery := query.(*InsertQuery)
-		if len(insertQuery.ColumnValues) != 3 {
+		if len(insertQuery.ColumnValues) != 4 {
 			t.Fatal("cannot parse")
 		}
 		insertQuery.SetNextSequenceID(2) // simulate sequencer's action
@@ -179,7 +182,10 @@ func testInsertWithShardColumnTable(t *testing.T, tableName string) {
 		if string(insertQuery.ColumnValues[1]().Val) != "bob" {
 			t.Fatal("cannot parse column values")
 		}
-		if string(insertQuery.ColumnValues[2]().Val) != "2019-08-01 12:00:00" {
+		if string(insertQuery.ColumnValues[2]().Val) != "0" {
+			t.Fatal("cannot parse column values")
+		}
+		if string(insertQuery.ColumnValues[3]().Val) != "2019-08-01 12:00:00" {
 			t.Fatal("cannot parse column values")
 		}
 
@@ -190,7 +196,7 @@ func testInsertWithShardKeyTable(t *testing.T, tableName string) {
 	parser, err := New()
 	checkErr(t, err)
 	t.Run("simple insert query", func(t *testing.T) {
-		text := fmt.Sprintf("insert into %s(id, user_id, created_at) values (null, %d, '2019-08-01 12:00:00')", tableName, 1)
+		text := fmt.Sprintf("insert into %s(id, user_id, is_deleted, created_at) values (null, %d, true, '2019-08-01 12:00:00')", tableName, 1)
 		query, err := parser.Parse(text)
 		checkErr(t, err)
 		if query.QueryType() != Insert {
@@ -200,7 +206,7 @@ func testInsertWithShardKeyTable(t *testing.T, tableName string) {
 			t.Fatal("cannot parse 'insert' query")
 		}
 		insertQuery := query.(*InsertQuery)
-		if len(insertQuery.ColumnValues) != 3 {
+		if len(insertQuery.ColumnValues) != 4 {
 			t.Fatal("cannot parse")
 		}
 		if insertQuery.ColumnValues[0] != nil {
@@ -212,11 +218,14 @@ func testInsertWithShardKeyTable(t *testing.T, tableName string) {
 		if insertQuery.ColumnValues[2] != nil {
 			t.Fatal("cannot parse column values")
 		}
+		if insertQuery.ColumnValues[3] != nil {
+			t.Fatal("cannot parse column values")
+		}
 	})
 	t.Run("insert query with placeholder", func(t *testing.T) {
-		text := fmt.Sprintf("insert into %s(id, user_id, created_at) values (?, ?, ?)", tableName)
+		text := fmt.Sprintf("insert into %s(id, user_id, is_deleted, created_at) values (?, ?, ?, ?)", tableName)
 		createdAt, _ := time.Parse("2006-01-02 15:04:05", "2019-08-01 12:00:00")
-		query, err := parser.Parse(text, nil, uint64(1), createdAt)
+		query, err := parser.Parse(text, nil, uint64(1), true, createdAt)
 		checkErr(t, err)
 		if query.QueryType() != Insert {
 			t.Fatal("cannot parse 'insert' query")
@@ -225,7 +234,7 @@ func testInsertWithShardKeyTable(t *testing.T, tableName string) {
 			t.Fatal("cannot parse 'insert' query")
 		}
 		insertQuery := query.(*InsertQuery)
-		if len(insertQuery.ColumnValues) != 3 {
+		if len(insertQuery.ColumnValues) != 4 {
 			t.Fatal("cannot parse")
 		}
 		if string(insertQuery.ColumnValues[0]().Val) != "null" {
@@ -234,10 +243,13 @@ func testInsertWithShardKeyTable(t *testing.T, tableName string) {
 		if string(insertQuery.ColumnValues[1]().Val) != "1" {
 			t.Fatal("cannot parse column values")
 		}
-		if string(insertQuery.ColumnValues[2]().Val) != "2019-08-01 12:00:00" {
+		if string(insertQuery.ColumnValues[2]().Val) != "1" {
 			t.Fatal("cannot parse column values")
 		}
-		if insertQuery.String() != "insert into user_items(id, user_id, created_at) values (null, 1, '2019-08-01 12:00:00')" {
+		if string(insertQuery.ColumnValues[3]().Val) != "2019-08-01 12:00:00" {
+			t.Fatal("cannot parse column values")
+		}
+		if insertQuery.String() != "insert into user_items(id, user_id, is_deleted, created_at) values (null, 1, 1, '2019-08-01 12:00:00')" {
 			t.Fatal("cannot generate parsed query")
 		}
 	})
@@ -248,7 +260,7 @@ func testInsertWithShardColumnAndShardKeyTable(t *testing.T, tableName string) {
 	checkErr(t, err)
 	t.Run("simple insert query", func(t *testing.T) {
 		createdAt, _ := time.Parse("2006-01-02 15:04:05", "2019-08-01 12:00:00")
-		text := fmt.Sprintf("insert into %s(id, user_id, created_at) values (null, %d, '%s')", tableName, 1, createdAt)
+		text := fmt.Sprintf("insert into %s(id, user_id, is_deleted, created_at) values (null, %d, %t, '%s')", tableName, 1, false, createdAt)
 		query, err := parser.Parse(text)
 		checkErr(t, err)
 		if query.QueryType() != Insert {
@@ -259,7 +271,7 @@ func testInsertWithShardColumnAndShardKeyTable(t *testing.T, tableName string) {
 		}
 		insertQuery := query.(*InsertQuery)
 		insertQuery.SetNextSequenceID(3) // simulate sequencer's action
-		if len(insertQuery.ColumnValues) != 3 {
+		if len(insertQuery.ColumnValues) != 4 {
 			t.Fatal("cannot parse")
 		}
 		if string(insertQuery.ColumnValues[0]().Val) != "3" {
@@ -271,11 +283,14 @@ func testInsertWithShardColumnAndShardKeyTable(t *testing.T, tableName string) {
 		if insertQuery.ColumnValues[2] != nil {
 			t.Fatal("cannot parse column values")
 		}
+		if insertQuery.ColumnValues[3] != nil {
+			t.Fatal("cannot parse column values")
+		}
 	})
 	t.Run("insert query with placeholder use int64 type", func(t *testing.T) {
-		text := fmt.Sprintf("insert into %s(id, user_id, created_at) values (?, ?, ?)", tableName)
+		text := fmt.Sprintf("insert into %s(id, user_id, is_deleted, created_at) values (?, ?, ?, ?)", tableName)
 		createdAt, _ := time.Parse("2006-01-02 15:04:05", "2019-08-01 12:00:00")
-		query, err := parser.Parse(text, nil, int64(1), createdAt)
+		query, err := parser.Parse(text, nil, int64(1), false, createdAt)
 		checkErr(t, err)
 		if query.QueryType() != Insert {
 			t.Fatal("cannot parse 'insert' query")
@@ -285,7 +300,7 @@ func testInsertWithShardColumnAndShardKeyTable(t *testing.T, tableName string) {
 		}
 		insertQuery := query.(*InsertQuery)
 		insertQuery.SetNextSequenceID(4) // simulate sequencer's action
-		if len(insertQuery.ColumnValues) != 3 {
+		if len(insertQuery.ColumnValues) != 4 {
 			t.Fatal("cannot parse")
 		}
 		if string(insertQuery.ColumnValues[0]().Val) != "4" {
@@ -294,18 +309,22 @@ func testInsertWithShardColumnAndShardKeyTable(t *testing.T, tableName string) {
 		if string(insertQuery.ColumnValues[1]().Val) != "1" {
 			t.Fatal("cannot parse column values")
 		}
-		if string(insertQuery.ColumnValues[2]().Val) != "2019-08-01 12:00:00" {
+		if string(insertQuery.ColumnValues[2]().Val) != "0" {
 			t.Fatal("cannot parse column values")
 		}
-		if insertQuery.String() != "insert into user_decks(id, user_id, created_at) values (4, 1, '2019-08-01 12:00:00')" {
+		if string(insertQuery.ColumnValues[3]().Val) != "2019-08-01 12:00:00" {
+			t.Fatal("cannot parse column values")
+		}
+		if insertQuery.String() != "insert into user_decks(id, user_id, is_deleted, created_at) values (4, 1, 0, '2019-08-01 12:00:00')" {
 			t.Fatal("cannot generate parsed query")
 		}
 	})
-	t.Run("insert query with placeholder use uint64 pointer", func(t *testing.T) {
-		text := fmt.Sprintf("insert into %s(id, user_id, created_at) values (?, ?, ?)", tableName)
+	t.Run("insert query with placeholder use int64 pointer", func(t *testing.T) {
+		text := fmt.Sprintf("insert into %s(id, user_id, is_deleted, created_at) values (?, ?, ?, ?)", tableName)
 		userId := int64(1)
+		isDeleted := false
 		createdAt, _ := time.Parse("2006-01-02 15:04:05", "2019-08-01 12:00:00")
-		query, err := parser.Parse(text, nil, &userId, createdAt)
+		query, err := parser.Parse(text, nil, &userId, &isDeleted, createdAt)
 		checkErr(t, err)
 		if query.QueryType() != Insert {
 			t.Fatal("cannot parse 'insert' query")
@@ -315,57 +334,29 @@ func testInsertWithShardColumnAndShardKeyTable(t *testing.T, tableName string) {
 		}
 		insertQuery := query.(*InsertQuery)
 		insertQuery.SetNextSequenceID(4) // simulate sequencer's action
-		if len(insertQuery.ColumnValues) != 3 {
+		if len(insertQuery.ColumnValues) != 4 {
 			t.Fatal("cannot parse")
 		}
 		if string(insertQuery.ColumnValues[0]().Val) != "4" {
 			t.Fatal("cannot parse column values")
 		}
-		fmt.Printf("string(insertQuery.ColumnValues[1]().Val):%v\n", string(insertQuery.ColumnValues[1]().Val))
 		if string(insertQuery.ColumnValues[1]().Val) != "1" {
 			t.Fatal("cannot parse column values")
 		}
-		if string(insertQuery.ColumnValues[2]().Val) != "2019-08-01 12:00:00" {
+		if string(insertQuery.ColumnValues[2]().Val) != "0" {
 			t.Fatal("cannot parse column values")
 		}
-		if insertQuery.String() != "insert into user_decks(id, user_id, created_at) values (4, 1, '2019-08-01 12:00:00')" {
-			t.Fatal("cannot generate parsed query")
-		}
-	})
-	t.Run("insert query with placeholder use uint64 nil pointer", func(t *testing.T) {
-		text := fmt.Sprintf("insert into %s(id, user_id, created_at) values (?, ?, ?)", tableName)
-		createdAt, _ := time.Parse("2006-01-02 15:04:05", "2019-08-01 12:00:00")
-		query, err := parser.Parse(text, nil, nil, createdAt)
-		checkErr(t, err)
-		if query.QueryType() != Insert {
-			t.Fatal("cannot parse 'insert' query")
-		}
-		if query.Table() != tableName {
-			t.Fatal("cannot parse 'insert' query")
-		}
-		insertQuery := query.(*InsertQuery)
-		insertQuery.SetNextSequenceID(4) // simulate sequencer's action
-		if len(insertQuery.ColumnValues) != 3 {
-			t.Fatal("cannot parse")
-		}
-		if string(insertQuery.ColumnValues[0]().Val) != "4" {
+		if string(insertQuery.ColumnValues[3]().Val) != "2019-08-01 12:00:00" {
 			t.Fatal("cannot parse column values")
 		}
-		fmt.Printf("string(insertQuery.ColumnValues[1]().Val):%v\n", string(insertQuery.ColumnValues[1]().Val))
-		if string(insertQuery.ColumnValues[1]().Val) != "null" {
-			t.Fatal("cannot parse column values")
-		}
-		if string(insertQuery.ColumnValues[2]().Val) != "2019-08-01 12:00:00" {
-			t.Fatal("cannot parse column values")
-		}
-		if insertQuery.String() != "insert into user_decks(id, user_id, created_at) values (4, null, '2019-08-01 12:00:00')" {
+		if insertQuery.String() != "insert into user_decks(id, user_id, is_deleted, created_at) values (4, 1, 0, '2019-08-01 12:00:00')" {
 			t.Fatal("cannot generate parsed query")
 		}
 	})
 	t.Run("insert query with placeholder use uint64 type", func(t *testing.T) {
-		text := fmt.Sprintf("insert into %s(id, user_id, created_at) values (?, ?, ?)", tableName)
+		text := fmt.Sprintf("insert into %s(id, user_id, is_deleted, created_at) values (?, ?, ?, ?)", tableName)
 		createdAt, _ := time.Parse("2006-01-02 15:04:05", "2019-08-01 12:00:00")
-		query, err := parser.Parse(text, nil, uint64(1), createdAt)
+		query, err := parser.Parse(text, nil, uint64(1), true, createdAt)
 		checkErr(t, err)
 		if query.QueryType() != Insert {
 			t.Fatal("cannot parse 'insert' query")
@@ -375,7 +366,7 @@ func testInsertWithShardColumnAndShardKeyTable(t *testing.T, tableName string) {
 		}
 		insertQuery := query.(*InsertQuery)
 		insertQuery.SetNextSequenceID(4) // simulate sequencer's action
-		if len(insertQuery.ColumnValues) != 3 {
+		if len(insertQuery.ColumnValues) != 4 {
 			t.Fatal("cannot parse")
 		}
 		if string(insertQuery.ColumnValues[0]().Val) != "4" {
@@ -384,18 +375,22 @@ func testInsertWithShardColumnAndShardKeyTable(t *testing.T, tableName string) {
 		if string(insertQuery.ColumnValues[1]().Val) != "1" {
 			t.Fatal("cannot parse column values")
 		}
-		if string(insertQuery.ColumnValues[2]().Val) != "2019-08-01 12:00:00" {
+		if string(insertQuery.ColumnValues[2]().Val) != "1" {
 			t.Fatal("cannot parse column values")
 		}
-		if insertQuery.String() != "insert into user_decks(id, user_id, created_at) values (4, 1, '2019-08-01 12:00:00')" {
+		if string(insertQuery.ColumnValues[3]().Val) != "2019-08-01 12:00:00" {
+			t.Fatal("cannot parse column values")
+		}
+		if insertQuery.String() != "insert into user_decks(id, user_id, is_deleted, created_at) values (4, 1, 1, '2019-08-01 12:00:00')" {
 			t.Fatal("cannot generate parsed query")
 		}
 	})
 	t.Run("insert query with placeholder use uint64 pointer", func(t *testing.T) {
-		text := fmt.Sprintf("insert into %s(id, user_id, created_at) values (?, ?, ?)", tableName)
+		text := fmt.Sprintf("insert into %s(id, user_id, is_deleted, created_at) values (?, ?, ?, ?)", tableName)
 		userId := uint64(1)
+		isDeleted := true
 		createdAt, _ := time.Parse("2006-01-02 15:04:05", "2019-08-01 12:00:00")
-		query, err := parser.Parse(text, nil, &userId, createdAt)
+		query, err := parser.Parse(text, nil, &userId, &isDeleted, &createdAt)
 		checkErr(t, err)
 		if query.QueryType() != Insert {
 			t.Fatal("cannot parse 'insert' query")
@@ -405,20 +400,53 @@ func testInsertWithShardColumnAndShardKeyTable(t *testing.T, tableName string) {
 		}
 		insertQuery := query.(*InsertQuery)
 		insertQuery.SetNextSequenceID(4) // simulate sequencer's action
-		if len(insertQuery.ColumnValues) != 3 {
+		if len(insertQuery.ColumnValues) != 4 {
 			t.Fatal("cannot parse")
 		}
 		if string(insertQuery.ColumnValues[0]().Val) != "4" {
 			t.Fatal("cannot parse column values")
 		}
-		fmt.Printf("string(insertQuery.ColumnValues[1]().Val):%v\n", string(insertQuery.ColumnValues[1]().Val))
 		if string(insertQuery.ColumnValues[1]().Val) != "1" {
 			t.Fatal("cannot parse column values")
 		}
-		if string(insertQuery.ColumnValues[2]().Val) != "2019-08-01 12:00:00" {
+		if string(insertQuery.ColumnValues[2]().Val) != "1" {
 			t.Fatal("cannot parse column values")
 		}
-		if insertQuery.String() != "insert into user_decks(id, user_id, created_at) values (4, 1, '2019-08-01 12:00:00')" {
+		if string(insertQuery.ColumnValues[3]().Val) != "2019-08-01 12:00:00" {
+			t.Fatal("cannot parse column values")
+		}
+		if insertQuery.String() != "insert into user_decks(id, user_id, is_deleted, created_at) values (4, 1, 1, '2019-08-01 12:00:00')" {
+			t.Fatal("cannot generate parsed query")
+		}
+	})
+	t.Run("insert query with placeholder use nil pointer", func(t *testing.T) {
+		text := fmt.Sprintf("insert into %s(id, user_id, is_deleted, created_at) values (?, ?, ?, ?)", tableName)
+		query, err := parser.Parse(text, nil, nil, nil, nil)
+		checkErr(t, err)
+		if query.QueryType() != Insert {
+			t.Fatal("cannot parse 'insert' query")
+		}
+		if query.Table() != tableName {
+			t.Fatal("cannot parse 'insert' query")
+		}
+		insertQuery := query.(*InsertQuery)
+		insertQuery.SetNextSequenceID(4) // simulate sequencer's action
+		if len(insertQuery.ColumnValues) != 4 {
+			t.Fatal("cannot parse")
+		}
+		if string(insertQuery.ColumnValues[0]().Val) != "4" {
+			t.Fatal("cannot parse column values")
+		}
+		if string(insertQuery.ColumnValues[1]().Val) != "null" {
+			t.Fatal("cannot parse column values")
+		}
+		if string(insertQuery.ColumnValues[2]().Val) != "null" {
+			t.Fatal("cannot parse column values")
+		}
+		if string(insertQuery.ColumnValues[3]().Val) != "null" {
+			t.Fatal("cannot parse column values")
+		}
+		if insertQuery.String() != "insert into user_decks(id, user_id, is_deleted, created_at) values (4, null, null, null)" {
 			t.Fatal("cannot generate parsed query")
 		}
 	})
