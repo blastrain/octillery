@@ -204,88 +204,66 @@ func (p *Parser) replaceInsertValueFromValArg(query *InsertQuery, colIndex int, 
 				Val:  []byte(arg),
 			}
 		}
-	case int, *int, int8, *int8, int16, *int16, int32, *int32, int64, *int64:
-		var assertedArg int64
-		if i, ok := arg.(int); ok {
-			assertedArg = int64(i)
-		}
-		if i, ok := arg.(*int); ok {
-			assertedArg = int64(*i)
-		}
-		if i, ok := arg.(int8); ok {
-			assertedArg = int64(i)
-		}
-		if i, ok := arg.(*int8); ok {
-			assertedArg = int64(*i)
-		}
-		if i, ok := arg.(int16); ok {
-			assertedArg = int64(i)
-		}
-		if i, ok := arg.(*int16); ok {
-			assertedArg = int64(*i)
-		}
-		if i, ok := arg.(int32); ok {
-			assertedArg = int64(i)
-		}
-		if i, ok := arg.(*int32); ok {
-			assertedArg = int64(*i)
-		}
-		if i, ok := arg.(int64); ok {
-			assertedArg = i
-		}
-		if i, ok := arg.(*int64); ok {
-			assertedArg = *i
-		}
+	case int, int8, int16, int32, int64:
 		if colName == p.shardKeyColumnName(query.TableName) {
-			query.ShardKeyID = Identifier(assertedArg)
+			query.ShardKeyID = Identifier(arg.(int64))
 		}
-		query.ColumnValues[colIndex] = func() *vtparser.SQLVal {
-			return &vtparser.SQLVal{
-				Type: vtparser.IntVal,
-				Val:  []byte(fmt.Sprintf("%d", assertedArg)),
-			}
-		}
-	case uint, *uint, uint8, *uint8, uint16, *uint16, uint32, *uint32, uint64, *uint64:
-		var assertedArg uint64
-		if i, ok := arg.(uint); ok {
-			assertedArg = uint64(i)
-		}
-		if i, ok := arg.(*uint); ok {
-			assertedArg = uint64(*i)
-		}
-		if i, ok := arg.(uint8); ok {
-			assertedArg = uint64(i)
-		}
-		if i, ok := arg.(*uint8); ok {
-			assertedArg = uint64(*i)
-		}
-		if i, ok := arg.(uint16); ok {
-			assertedArg = uint64(i)
-		}
-		if i, ok := arg.(*uint16); ok {
-			assertedArg = uint64(*i)
-		}
-		if i, ok := arg.(uint32); ok {
-			assertedArg = uint64(i)
-		}
-		if i, ok := arg.(*uint32); ok {
-			assertedArg = uint64(*i)
-		}
-		if i, ok := arg.(uint64); ok {
-			assertedArg = i
-		}
-		if i, ok := arg.(*uint64); ok {
-			assertedArg = *i
-		}
+		query.ColumnValues[colIndex] = createSQLIntTypeVal(arg)
+	case *int:
 		if colName == p.shardKeyColumnName(query.TableName) {
-			query.ShardKeyID = Identifier(assertedArg)
+			query.ShardKeyID = Identifier(*arg)
 		}
-		query.ColumnValues[colIndex] = func() *vtparser.SQLVal {
-			return &vtparser.SQLVal{
-				Type: vtparser.IntVal,
-				Val:  []byte(fmt.Sprintf("%d", assertedArg)),
-			}
+		query.ColumnValues[colIndex] = createSQLIntTypeVal(*arg)
+	case *int8:
+		if colName == p.shardKeyColumnName(query.TableName) {
+			query.ShardKeyID = Identifier(*arg)
 		}
+		query.ColumnValues[colIndex] = createSQLIntTypeVal(*arg)
+	case *int16:
+		if colName == p.shardKeyColumnName(query.TableName) {
+			query.ShardKeyID = Identifier(*arg)
+		}
+		query.ColumnValues[colIndex] = createSQLIntTypeVal(*arg)
+	case *int32:
+		if colName == p.shardKeyColumnName(query.TableName) {
+			query.ShardKeyID = Identifier(*arg)
+		}
+		query.ColumnValues[colIndex] = createSQLIntTypeVal(*arg)
+	case *int64:
+		if colName == p.shardKeyColumnName(query.TableName) {
+			query.ShardKeyID = Identifier(*arg)
+		}
+		query.ColumnValues[colIndex] = createSQLIntTypeVal(*arg)
+	case uint, uint8, uint16, uint32, uint64:
+		if colName == p.shardKeyColumnName(query.TableName) {
+			query.ShardKeyID = Identifier(int64(arg.(uint64)))
+		}
+		query.ColumnValues[colIndex] = createSQLIntTypeVal(arg)
+	case *uint:
+		if colName == p.shardKeyColumnName(query.TableName) {
+			query.ShardKeyID = Identifier(*arg)
+		}
+		query.ColumnValues[colIndex] = createSQLIntTypeVal(*arg)
+	case *uint8:
+		if colName == p.shardKeyColumnName(query.TableName) {
+			query.ShardKeyID = Identifier(*arg)
+		}
+		query.ColumnValues[colIndex] = createSQLIntTypeVal(*arg)
+	case *uint16:
+		if colName == p.shardKeyColumnName(query.TableName) {
+			query.ShardKeyID = Identifier(*arg)
+		}
+		query.ColumnValues[colIndex] = createSQLIntTypeVal(*arg)
+	case *uint32:
+		if colName == p.shardKeyColumnName(query.TableName) {
+			query.ShardKeyID = Identifier(*arg)
+		}
+		query.ColumnValues[colIndex] = createSQLIntTypeVal(*arg)
+	case *uint64:
+		if colName == p.shardKeyColumnName(query.TableName) {
+			query.ShardKeyID = Identifier(*arg)
+		}
+		query.ColumnValues[colIndex] = createSQLIntTypeVal(*arg)
 	case time.Time:
 		query.ColumnValues[colIndex] = func() *vtparser.SQLVal {
 			return &vtparser.SQLVal{
@@ -555,4 +533,14 @@ func New() (*Parser, error) {
 	}
 
 	return &Parser{cfg: cfg}, nil
+}
+
+func createSQLIntTypeVal(val interface{}) func() *vtparser.SQLVal {
+	return func() *vtparser.SQLVal {
+		return &vtparser.SQLVal{
+			Type: vtparser.IntVal,
+			Val:  []byte(fmt.Sprintf("%d", val)),
+		}
+
+	}
 }
