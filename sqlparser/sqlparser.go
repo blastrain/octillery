@@ -27,6 +27,10 @@ var (
 	replaceCharSetParam  = regexp.MustCompile("charset=[A-Za-z-_0-9]+")
 )
 
+var (
+	ErrShardingKeyNotAllowNil = errors.New("sharding key does not allow nil")
+)
+
 func (p *Parser) shardColumnName(tableName string) string {
 	return p.cfg.ShardColumnName(tableName)
 }
@@ -211,29 +215,64 @@ func (p *Parser) replaceInsertValueFromValArg(query *InsertQuery, colIndex int, 
 		query.ColumnValues[colIndex] = createSQLIntTypeVal(arg)
 	case *int:
 		if colName == p.shardKeyColumnName(query.TableName) {
+			if arg == nil {
+				return errors.WithStack(ErrShardingKeyNotAllowNil)
+			}
 			query.ShardKeyID = Identifier(*arg)
 		}
-		query.ColumnValues[colIndex] = createSQLIntTypeVal(*arg)
+		if arg == nil {
+			query.ColumnValues[colIndex] = createSQLNilTypeVal()
+		} else {
+			query.ColumnValues[colIndex] = createSQLIntTypeVal(*arg)
+		}
 	case *int8:
 		if colName == p.shardKeyColumnName(query.TableName) {
+			if arg == nil {
+				return errors.WithStack(ErrShardingKeyNotAllowNil)
+			}
 			query.ShardKeyID = Identifier(*arg)
 		}
-		query.ColumnValues[colIndex] = createSQLIntTypeVal(*arg)
+		if arg == nil {
+			query.ColumnValues[colIndex] = createSQLNilTypeVal()
+		} else {
+			query.ColumnValues[colIndex] = createSQLIntTypeVal(*arg)
+		}
 	case *int16:
 		if colName == p.shardKeyColumnName(query.TableName) {
+			if arg == nil {
+				return errors.WithStack(ErrShardingKeyNotAllowNil)
+			}
 			query.ShardKeyID = Identifier(*arg)
 		}
-		query.ColumnValues[colIndex] = createSQLIntTypeVal(*arg)
+		if arg == nil {
+			query.ColumnValues[colIndex] = createSQLNilTypeVal()
+		} else {
+			query.ColumnValues[colIndex] = createSQLIntTypeVal(*arg)
+		}
 	case *int32:
 		if colName == p.shardKeyColumnName(query.TableName) {
+			if arg == nil {
+				return errors.WithStack(ErrShardingKeyNotAllowNil)
+			}
 			query.ShardKeyID = Identifier(*arg)
 		}
-		query.ColumnValues[colIndex] = createSQLIntTypeVal(*arg)
+		if arg == nil {
+			query.ColumnValues[colIndex] = createSQLNilTypeVal()
+		} else {
+			query.ColumnValues[colIndex] = createSQLIntTypeVal(*arg)
+		}
 	case *int64:
 		if colName == p.shardKeyColumnName(query.TableName) {
+			if arg == nil {
+				return errors.WithStack(ErrShardingKeyNotAllowNil)
+			}
 			query.ShardKeyID = Identifier(*arg)
 		}
-		query.ColumnValues[colIndex] = createSQLIntTypeVal(*arg)
+		if arg == nil {
+			query.ColumnValues[colIndex] = createSQLNilTypeVal()
+		} else {
+			query.ColumnValues[colIndex] = createSQLIntTypeVal(*arg)
+		}
 	case uint, uint8, uint16, uint32, uint64:
 		if colName == p.shardKeyColumnName(query.TableName) {
 			query.ShardKeyID = Identifier(int64(arg.(uint64)))
@@ -241,35 +280,79 @@ func (p *Parser) replaceInsertValueFromValArg(query *InsertQuery, colIndex int, 
 		query.ColumnValues[colIndex] = createSQLIntTypeVal(arg)
 	case *uint:
 		if colName == p.shardKeyColumnName(query.TableName) {
+			if arg == nil {
+				return errors.WithStack(ErrShardingKeyNotAllowNil)
+			}
 			query.ShardKeyID = Identifier(*arg)
 		}
-		query.ColumnValues[colIndex] = createSQLIntTypeVal(*arg)
+		if arg == nil {
+			query.ColumnValues[colIndex] = createSQLNilTypeVal()
+		} else {
+			query.ColumnValues[colIndex] = createSQLIntTypeVal(*arg)
+		}
 	case *uint8:
 		if colName == p.shardKeyColumnName(query.TableName) {
+			if arg == nil {
+				return errors.WithStack(ErrShardingKeyNotAllowNil)
+			}
 			query.ShardKeyID = Identifier(*arg)
 		}
-		query.ColumnValues[colIndex] = createSQLIntTypeVal(*arg)
+		if arg == nil {
+			query.ColumnValues[colIndex] = createSQLNilTypeVal()
+		} else {
+			query.ColumnValues[colIndex] = createSQLIntTypeVal(*arg)
+		}
 	case *uint16:
 		if colName == p.shardKeyColumnName(query.TableName) {
+			if arg == nil {
+				return errors.WithStack(ErrShardingKeyNotAllowNil)
+			}
 			query.ShardKeyID = Identifier(*arg)
 		}
-		query.ColumnValues[colIndex] = createSQLIntTypeVal(*arg)
+		if arg == nil {
+			query.ColumnValues[colIndex] = createSQLNilTypeVal()
+		} else {
+			query.ColumnValues[colIndex] = createSQLIntTypeVal(*arg)
+		}
 	case *uint32:
 		if colName == p.shardKeyColumnName(query.TableName) {
+			if arg == nil {
+				return errors.WithStack(ErrShardingKeyNotAllowNil)
+			}
 			query.ShardKeyID = Identifier(*arg)
 		}
-		query.ColumnValues[colIndex] = createSQLIntTypeVal(*arg)
+		if arg == nil {
+			query.ColumnValues[colIndex] = createSQLNilTypeVal()
+		} else {
+			query.ColumnValues[colIndex] = createSQLIntTypeVal(*arg)
+		}
 	case *uint64:
 		if colName == p.shardKeyColumnName(query.TableName) {
+			if arg == nil {
+				return errors.WithStack(ErrShardingKeyNotAllowNil)
+			}
 			query.ShardKeyID = Identifier(*arg)
 		}
-		query.ColumnValues[colIndex] = createSQLIntTypeVal(*arg)
+		if arg == nil {
+			query.ColumnValues[colIndex] = createSQLNilTypeVal()
+		} else {
+			query.ColumnValues[colIndex] = createSQLIntTypeVal(*arg)
+		}
 	case bool:
 		val := convertBoolToInt8(arg)
 		query.ColumnValues[colIndex] = createSQLIntTypeVal(val)
 	case *bool:
-		val := convertBoolToInt8(*arg)
-		query.ColumnValues[colIndex] = createSQLIntTypeVal(val)
+		if arg == nil {
+			query.ColumnValues[colIndex] = func() *vtparser.SQLVal {
+				return &vtparser.SQLVal{
+					Type: vtparser.IntVal,
+					Val:  []byte("null"),
+				}
+			}
+		} else {
+			val := convertBoolToInt8(*arg)
+			query.ColumnValues[colIndex] = createSQLIntTypeVal(val)
+		}
 	case time.Time:
 		query.ColumnValues[colIndex] = func() *vtparser.SQLVal {
 			return &vtparser.SQLVal{
@@ -278,10 +361,19 @@ func (p *Parser) replaceInsertValueFromValArg(query *InsertQuery, colIndex int, 
 			}
 		}
 	case *time.Time:
-		query.ColumnValues[colIndex] = func() *vtparser.SQLVal {
-			return &vtparser.SQLVal{
-				Type: vtparser.StrVal,
-				Val:  []byte(arg.Format("2006-01-02 15:04:05")),
+		if arg == nil {
+			query.ColumnValues[colIndex] = func() *vtparser.SQLVal {
+				return &vtparser.SQLVal{
+					Type: vtparser.IntVal,
+					Val:  []byte("null"),
+				}
+			}
+		} else {
+			query.ColumnValues[colIndex] = func() *vtparser.SQLVal {
+				return &vtparser.SQLVal{
+					Type: vtparser.StrVal,
+					Val:  []byte(arg.Format("2006-01-02 15:04:05")),
+				}
 			}
 		}
 	case nil:
@@ -547,7 +639,15 @@ func createSQLIntTypeVal(val interface{}) func() *vtparser.SQLVal {
 			Type: vtparser.IntVal,
 			Val:  []byte(fmt.Sprintf("%d", val)),
 		}
+	}
+}
 
+func createSQLNilTypeVal() func() *vtparser.SQLVal {
+	return func() *vtparser.SQLVal {
+		return &vtparser.SQLVal{
+			Type: vtparser.IntVal,
+			Val:  []byte("null"),
+		}
 	}
 }
 

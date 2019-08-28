@@ -419,9 +419,15 @@ func testInsertWithShardColumnAndShardKeyTable(t *testing.T, tableName string) {
 			t.Fatal("cannot generate parsed query")
 		}
 	})
-	t.Run("insert query with placeholder use nil pointer", func(t *testing.T) {
-		text := fmt.Sprintf("insert into %s(id, user_id, is_deleted, created_at) values (?, ?, ?, ?)", tableName)
-		query, err := parser.Parse(text, nil, nil, nil, nil)
+	t.Run("insert query with placeholder use nil pointer case sharding_key is not nil", func(t *testing.T) {
+		text := fmt.Sprintf("insert into %s(id, user_id, group_id, is_deleted, created_at) values (?, ?, ?, ?, ?)", tableName)
+		userId := uint64(1)
+		var (
+			groupId   *uint64
+			isDeleted *bool
+			createdAt *time.Time
+		)
+		query, err := parser.Parse(text, nil, &userId, groupId, isDeleted, createdAt)
 		checkErr(t, err)
 		if query.QueryType() != Insert {
 			t.Fatal("cannot parse 'insert' query")
@@ -431,13 +437,13 @@ func testInsertWithShardColumnAndShardKeyTable(t *testing.T, tableName string) {
 		}
 		insertQuery := query.(*InsertQuery)
 		insertQuery.SetNextSequenceID(4) // simulate sequencer's action
-		if len(insertQuery.ColumnValues) != 4 {
+		if len(insertQuery.ColumnValues) != 5 {
 			t.Fatal("cannot parse")
 		}
 		if string(insertQuery.ColumnValues[0]().Val) != "4" {
 			t.Fatal("cannot parse column values")
 		}
-		if string(insertQuery.ColumnValues[1]().Val) != "null" {
+		if string(insertQuery.ColumnValues[1]().Val) != "1" {
 			t.Fatal("cannot parse column values")
 		}
 		if string(insertQuery.ColumnValues[2]().Val) != "null" {
@@ -446,8 +452,24 @@ func testInsertWithShardColumnAndShardKeyTable(t *testing.T, tableName string) {
 		if string(insertQuery.ColumnValues[3]().Val) != "null" {
 			t.Fatal("cannot parse column values")
 		}
-		if insertQuery.String() != "insert into user_decks(id, user_id, is_deleted, created_at) values (4, null, null, null)" {
+		if string(insertQuery.ColumnValues[4]().Val) != "null" {
+			t.Fatal("cannot parse column values")
+		}
+		if insertQuery.String() != "insert into user_decks(id, user_id, group_id, is_deleted, created_at) values (4, 1, null, null, null)" {
 			t.Fatal("cannot generate parsed query")
+		}
+	})
+	t.Run("insert query with placeholder use nil pointer case sharding key is nil", func(t *testing.T) {
+		text := fmt.Sprintf("insert into %s(id, user_id, group_id, is_deleted, created_at) values (?, ?, ?, ?, ?)", tableName)
+		var (
+			userId  *uint64
+			groupId *uint64
+		)
+		isDeleted := true
+		createdAt, _ := time.Parse("2006-01-02 15:04:05", "2019-08-01 12:00:00")
+		_, err := parser.Parse(text, nil, userId, groupId, &isDeleted, &createdAt)
+		if err == nil {
+			t.Fatalf("cannot handle error")
 		}
 	})
 }
