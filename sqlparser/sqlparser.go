@@ -209,135 +209,105 @@ func (p *Parser) replaceInsertValueFromValArg(query *InsertQuery, colIndex int, 
 		} else {
 			query.ColumnValues[colIndex] = createSQLStringTypeVal(*arg)
 		}
-	case int, int8, int16, int32, int64:
-		if colName == p.shardKeyColumnName(query.TableName) {
-			query.ShardKeyID = Identifier(arg.(int64))
-		}
-		query.ColumnValues[colIndex] = createSQLIntTypeVal(arg)
+	case int:
+		p.replaceInsertValueFromValArgCaseInt(query, colIndex, colName, int64(arg))
+	case int8:
+		p.replaceInsertValueFromValArgCaseInt(query, colIndex, colName, int64(arg))
+	case int16:
+		p.replaceInsertValueFromValArgCaseInt(query, colIndex, colName, int64(arg))
+	case int32:
+		p.replaceInsertValueFromValArgCaseInt(query, colIndex, colName, int64(arg))
+	case int64:
+		p.replaceInsertValueFromValArgCaseInt(query, colIndex, colName, int64(arg))
 	case *int:
-		if colName == p.shardKeyColumnName(query.TableName) {
-			if arg == nil {
-				return errors.WithStack(ErrShardingKeyNotAllowNil)
-			}
-			query.ShardKeyID = Identifier(*arg)
-		}
 		if arg == nil {
-			query.ColumnValues[colIndex] = createSQLNilTypeVal()
+			if err := p.replaceInsertValueFromValArgCaseIntNilPtr(query, colIndex, colName); err != nil {
+				return errors.WithStack(err)
+			}
 		} else {
-			query.ColumnValues[colIndex] = createSQLIntTypeVal(*arg)
+			p.replaceInsertValueFromValArgCaseInt(query, colIndex, colName, int64(*arg))
 		}
 	case *int8:
-		if colName == p.shardKeyColumnName(query.TableName) {
-			if arg == nil {
-				return errors.WithStack(ErrShardingKeyNotAllowNil)
-			}
-			query.ShardKeyID = Identifier(*arg)
-		}
 		if arg == nil {
-			query.ColumnValues[colIndex] = createSQLNilTypeVal()
+			if err := p.replaceInsertValueFromValArgCaseIntNilPtr(query, colIndex, colName); err != nil {
+				return errors.WithStack(err)
+			}
 		} else {
-			query.ColumnValues[colIndex] = createSQLIntTypeVal(*arg)
+			p.replaceInsertValueFromValArgCaseInt(query, colIndex, colName, int64(*arg))
 		}
 	case *int16:
-		if colName == p.shardKeyColumnName(query.TableName) {
-			if arg == nil {
-				return errors.WithStack(ErrShardingKeyNotAllowNil)
-			}
-			query.ShardKeyID = Identifier(*arg)
-		}
 		if arg == nil {
-			query.ColumnValues[colIndex] = createSQLNilTypeVal()
+			if err := p.replaceInsertValueFromValArgCaseIntNilPtr(query, colIndex, colName); err != nil {
+				return errors.WithStack(err)
+			}
 		} else {
-			query.ColumnValues[colIndex] = createSQLIntTypeVal(*arg)
+			p.replaceInsertValueFromValArgCaseInt(query, colIndex, colName, int64(*arg))
 		}
 	case *int32:
-		if colName == p.shardKeyColumnName(query.TableName) {
-			if arg == nil {
-				return errors.WithStack(ErrShardingKeyNotAllowNil)
-			}
-			query.ShardKeyID = Identifier(*arg)
-		}
 		if arg == nil {
-			query.ColumnValues[colIndex] = createSQLNilTypeVal()
+			if err := p.replaceInsertValueFromValArgCaseIntNilPtr(query, colIndex, colName); err != nil {
+				return errors.WithStack(err)
+			}
 		} else {
-			query.ColumnValues[colIndex] = createSQLIntTypeVal(*arg)
+			p.replaceInsertValueFromValArgCaseInt(query, colIndex, colName, int64(*arg))
 		}
 	case *int64:
-		if colName == p.shardKeyColumnName(query.TableName) {
-			if arg == nil {
-				return errors.WithStack(ErrShardingKeyNotAllowNil)
-			}
-			query.ShardKeyID = Identifier(*arg)
-		}
 		if arg == nil {
-			query.ColumnValues[colIndex] = createSQLNilTypeVal()
+			if err := p.replaceInsertValueFromValArgCaseIntNilPtr(query, colIndex, colName); err != nil {
+				return errors.WithStack(err)
+			}
 		} else {
-			query.ColumnValues[colIndex] = createSQLIntTypeVal(*arg)
+			p.replaceInsertValueFromValArgCaseInt(query, colIndex, colName, int64(*arg))
 		}
-	case uint, uint8, uint16, uint32, uint64:
-		if colName == p.shardKeyColumnName(query.TableName) {
-			query.ShardKeyID = Identifier(int64(arg.(uint64)))
-		}
-		query.ColumnValues[colIndex] = createSQLIntTypeVal(arg)
+	case uint:
+		p.replaceInsertValueFromValArgCaseInt(query, colIndex, colName, int64(arg))
+	case uint8:
+		p.replaceInsertValueFromValArgCaseInt(query, colIndex, colName, int64(arg))
+	case uint16:
+		p.replaceInsertValueFromValArgCaseInt(query, colIndex, colName, int64(arg))
+	case uint32:
+		p.replaceInsertValueFromValArgCaseInt(query, colIndex, colName, int64(arg))
+	case uint64:
+		p.replaceInsertValueFromValArgCaseInt(query, colIndex, colName, int64(arg))
 	case *uint:
-		if colName == p.shardKeyColumnName(query.TableName) {
-			if arg == nil {
-				return errors.WithStack(ErrShardingKeyNotAllowNil)
-			}
-			query.ShardKeyID = Identifier(*arg)
-		}
 		if arg == nil {
-			query.ColumnValues[colIndex] = createSQLNilTypeVal()
+			if err := p.replaceInsertValueFromValArgCaseIntNilPtr(query, colIndex, colName); err != nil {
+				return errors.WithStack(err)
+			}
 		} else {
-			query.ColumnValues[colIndex] = createSQLIntTypeVal(*arg)
+			p.replaceInsertValueFromValArgCaseInt(query, colIndex, colName, int64(*arg))
 		}
 	case *uint8:
-		if colName == p.shardKeyColumnName(query.TableName) {
-			if arg == nil {
-				return errors.WithStack(ErrShardingKeyNotAllowNil)
-			}
-			query.ShardKeyID = Identifier(*arg)
-		}
 		if arg == nil {
-			query.ColumnValues[colIndex] = createSQLNilTypeVal()
+			if err := p.replaceInsertValueFromValArgCaseIntNilPtr(query, colIndex, colName); err != nil {
+				return errors.WithStack(err)
+			}
 		} else {
-			query.ColumnValues[colIndex] = createSQLIntTypeVal(*arg)
+			p.replaceInsertValueFromValArgCaseInt(query, colIndex, colName, int64(*arg))
 		}
 	case *uint16:
-		if colName == p.shardKeyColumnName(query.TableName) {
-			if arg == nil {
-				return errors.WithStack(ErrShardingKeyNotAllowNil)
-			}
-			query.ShardKeyID = Identifier(*arg)
-		}
 		if arg == nil {
-			query.ColumnValues[colIndex] = createSQLNilTypeVal()
+			if err := p.replaceInsertValueFromValArgCaseIntNilPtr(query, colIndex, colName); err != nil {
+				return errors.WithStack(err)
+			}
 		} else {
-			query.ColumnValues[colIndex] = createSQLIntTypeVal(*arg)
+			p.replaceInsertValueFromValArgCaseInt(query, colIndex, colName, int64(*arg))
 		}
 	case *uint32:
-		if colName == p.shardKeyColumnName(query.TableName) {
-			if arg == nil {
-				return errors.WithStack(ErrShardingKeyNotAllowNil)
-			}
-			query.ShardKeyID = Identifier(*arg)
-		}
 		if arg == nil {
-			query.ColumnValues[colIndex] = createSQLNilTypeVal()
+			if err := p.replaceInsertValueFromValArgCaseIntNilPtr(query, colIndex, colName); err != nil {
+				return errors.WithStack(err)
+			}
 		} else {
-			query.ColumnValues[colIndex] = createSQLIntTypeVal(*arg)
+			p.replaceInsertValueFromValArgCaseInt(query, colIndex, colName, int64(*arg))
 		}
 	case *uint64:
-		if colName == p.shardKeyColumnName(query.TableName) {
-			if arg == nil {
-				return errors.WithStack(ErrShardingKeyNotAllowNil)
-			}
-			query.ShardKeyID = Identifier(*arg)
-		}
 		if arg == nil {
-			query.ColumnValues[colIndex] = createSQLNilTypeVal()
+			if err := p.replaceInsertValueFromValArgCaseIntNilPtr(query, colIndex, colName); err != nil {
+				return errors.WithStack(err)
+			}
 		} else {
-			query.ColumnValues[colIndex] = createSQLIntTypeVal(*arg)
+			p.replaceInsertValueFromValArgCaseInt(query, colIndex, colName, int64(*arg))
 		}
 	case bool:
 		val := convertBoolToInt8(arg)
@@ -362,6 +332,21 @@ func (p *Parser) replaceInsertValueFromValArg(query *InsertQuery, colIndex int, 
 	default:
 		debug.Printf("arg type = %s", reflect.TypeOf(arg))
 	}
+	return nil
+}
+
+func (p *Parser) replaceInsertValueFromValArgCaseInt(query *InsertQuery, colIndex int, colName string, arg int64) {
+	if colName == p.shardKeyColumnName(query.TableName) {
+		query.ShardKeyID = Identifier(arg)
+	}
+	query.ColumnValues[colIndex] = createSQLIntTypeVal(arg)
+}
+
+func (p *Parser) replaceInsertValueFromValArgCaseIntNilPtr(query *InsertQuery, colIndex int, colName string) error {
+	if colName == p.shardKeyColumnName(query.TableName) {
+		return errors.WithStack(ErrShardingKeyNotAllowNil)
+	}
+	query.ColumnValues[colIndex] = createSQLNilTypeVal()
 	return nil
 }
 
