@@ -188,7 +188,66 @@ func testInsertWithShardColumnTable(t *testing.T, tableName string) {
 		if string(insertQuery.ColumnValues[3]().Val) != "2019-08-01 12:00:00" {
 			t.Fatal("cannot parse column values")
 		}
-
+	})
+	t.Run("insert query with placeholder use not nil string pointer", func(t *testing.T) {
+		text := fmt.Sprintf("insert into %s(id, name, is_deleted, created_at) values (?, ?, ?, ?)", tableName)
+		name := "bob"
+		createdAt, _ := time.Parse("2006-01-02 15:04:05", "2019-08-01 12:00:00")
+		query, err := parser.Parse(text, nil, &name, false, createdAt)
+		checkErr(t, err)
+		if query.QueryType() != Insert {
+			t.Fatal("cannot parse 'insert' query")
+		}
+		if query.Table() != tableName {
+			t.Fatal("cannot parse 'insert' query")
+		}
+		insertQuery := query.(*InsertQuery)
+		if len(insertQuery.ColumnValues) != 4 {
+			t.Fatal("cannot parse")
+		}
+		insertQuery.SetNextSequenceID(2) // simulate sequencer's action
+		if string(insertQuery.ColumnValues[0]().Val) != "2" {
+			t.Fatal("cannot parse column values")
+		}
+		if string(insertQuery.ColumnValues[1]().Val) != "bob" {
+			t.Fatal("cannot parse column values")
+		}
+		if string(insertQuery.ColumnValues[2]().Val) != "0" {
+			t.Fatal("cannot parse column values")
+		}
+		if string(insertQuery.ColumnValues[3]().Val) != "2019-08-01 12:00:00" {
+			t.Fatal("cannot parse column values")
+		}
+	})
+	t.Run("insert query with placeholder use nil string pointer", func(t *testing.T) {
+		text := fmt.Sprintf("insert into %s(id, name, is_deleted, created_at) values (?, ?, ?, ?)", tableName)
+		var name *string
+		createdAt, _ := time.Parse("2006-01-02 15:04:05", "2019-08-01 12:00:00")
+		query, err := parser.Parse(text, nil, name, false, createdAt)
+		checkErr(t, err)
+		if query.QueryType() != Insert {
+			t.Fatal("cannot parse 'insert' query")
+		}
+		if query.Table() != tableName {
+			t.Fatal("cannot parse 'insert' query")
+		}
+		insertQuery := query.(*InsertQuery)
+		if len(insertQuery.ColumnValues) != 4 {
+			t.Fatal("cannot parse")
+		}
+		insertQuery.SetNextSequenceID(2) // simulate sequencer's action
+		if string(insertQuery.ColumnValues[0]().Val) != "2" {
+			t.Fatal("cannot parse column values")
+		}
+		if string(insertQuery.ColumnValues[1]().Val) != "null" {
+			t.Fatal("cannot parse column values")
+		}
+		if string(insertQuery.ColumnValues[2]().Val) != "0" {
+			t.Fatal("cannot parse column values")
+		}
+		if string(insertQuery.ColumnValues[3]().Val) != "2019-08-01 12:00:00" {
+			t.Fatal("cannot parse column values")
+		}
 	})
 }
 

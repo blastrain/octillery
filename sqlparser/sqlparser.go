@@ -202,11 +202,12 @@ func (p *Parser) replaceInsertValueFromValArg(query *InsertQuery, colIndex int, 
 	queryArg := query.Args[index-1]
 	switch arg := queryArg.(type) {
 	case string:
-		query.ColumnValues[colIndex] = func() *vtparser.SQLVal {
-			return &vtparser.SQLVal{
-				Type: vtparser.StrVal,
-				Val:  []byte(arg),
-			}
+		query.ColumnValues[colIndex] = createSQLStringTypeVal(arg)
+	case *string:
+		if arg == nil {
+			query.ColumnValues[colIndex] = createSQLNilTypeVal()
+		} else {
+			query.ColumnValues[colIndex] = createSQLStringTypeVal(*arg)
 		}
 	case int, int8, int16, int32, int64:
 		if colName == p.shardKeyColumnName(query.TableName) {
@@ -638,6 +639,15 @@ func createSQLIntTypeVal(val interface{}) func() *vtparser.SQLVal {
 		return &vtparser.SQLVal{
 			Type: vtparser.IntVal,
 			Val:  []byte(fmt.Sprintf("%d", val)),
+		}
+	}
+}
+
+func createSQLStringTypeVal(val string) func() *vtparser.SQLVal {
+	return func() *vtparser.SQLVal {
+		return &vtparser.SQLVal{
+			Type: vtparser.StrVal,
+			Val:  []byte(val),
 		}
 	}
 }
