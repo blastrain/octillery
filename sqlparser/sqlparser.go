@@ -344,12 +344,7 @@ func (p *Parser) replaceInsertValueFromValArg(query *InsertQuery, colIndex int, 
 		query.ColumnValues[colIndex] = createSQLIntTypeVal(val)
 	case *bool:
 		if arg == nil {
-			query.ColumnValues[colIndex] = func() *vtparser.SQLVal {
-				return &vtparser.SQLVal{
-					Type: vtparser.IntVal,
-					Val:  []byte("null"),
-				}
-			}
+			query.ColumnValues[colIndex] = createSQLNilTypeVal()
 		} else {
 			val := convertBoolToInt8(*arg)
 			query.ColumnValues[colIndex] = createSQLIntTypeVal(val)
@@ -363,12 +358,7 @@ func (p *Parser) replaceInsertValueFromValArg(query *InsertQuery, colIndex int, 
 		}
 	case *time.Time:
 		if arg == nil {
-			query.ColumnValues[colIndex] = func() *vtparser.SQLVal {
-				return &vtparser.SQLVal{
-					Type: vtparser.IntVal,
-					Val:  []byte("null"),
-				}
-			}
+			query.ColumnValues[colIndex] = createSQLNilTypeVal()
 		} else {
 			query.ColumnValues[colIndex] = func() *vtparser.SQLVal {
 				return &vtparser.SQLVal{
@@ -378,12 +368,7 @@ func (p *Parser) replaceInsertValueFromValArg(query *InsertQuery, colIndex int, 
 			}
 		}
 	case nil:
-		query.ColumnValues[colIndex] = func() *vtparser.SQLVal {
-			return &vtparser.SQLVal{
-				Type: vtparser.IntVal,
-				Val:  []byte("null"),
-			}
-		}
+		query.ColumnValues[colIndex] = createSQLNilTypeVal()
 	default:
 		debug.Printf("arg type = %s", reflect.TypeOf(arg))
 	}
