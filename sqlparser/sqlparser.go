@@ -350,22 +350,12 @@ func (p *Parser) replaceInsertValueFromValArg(query *InsertQuery, colIndex int, 
 			query.ColumnValues[colIndex] = createSQLIntTypeVal(val)
 		}
 	case time.Time:
-		query.ColumnValues[colIndex] = func() *vtparser.SQLVal {
-			return &vtparser.SQLVal{
-				Type: vtparser.StrVal,
-				Val:  []byte(arg.Format("2006-01-02 15:04:05")),
-			}
-		}
+		query.ColumnValues[colIndex] = createSQLTimeTypeVal(arg)
 	case *time.Time:
 		if arg == nil {
 			query.ColumnValues[colIndex] = createSQLNilTypeVal()
 		} else {
-			query.ColumnValues[colIndex] = func() *vtparser.SQLVal {
-				return &vtparser.SQLVal{
-					Type: vtparser.StrVal,
-					Val:  []byte(arg.Format("2006-01-02 15:04:05")),
-				}
-			}
+			query.ColumnValues[colIndex] = createSQLTimeTypeVal(*arg)
 		}
 	case nil:
 		query.ColumnValues[colIndex] = createSQLNilTypeVal()
@@ -633,6 +623,15 @@ func createSQLStringTypeVal(val string) func() *vtparser.SQLVal {
 		return &vtparser.SQLVal{
 			Type: vtparser.StrVal,
 			Val:  []byte(val),
+		}
+	}
+}
+
+func createSQLTimeTypeVal(val time.Time) func() *vtparser.SQLVal {
+	return func() *vtparser.SQLVal {
+		return &vtparser.SQLVal{
+			Type: vtparser.StrVal,
+			Val:  []byte(val.Format("2006-01-02 15:04:05")),
 		}
 	}
 }
