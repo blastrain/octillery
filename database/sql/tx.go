@@ -122,14 +122,18 @@ func (proxy *Tx) begin(conn *connection.DBConnection) {
 		return
 	}
 	tx := conn.Begin(proxy.ctx, proxy.opts)
-	proxy.BeforeCommitCallback(func(writeQueries []*QueryLog) error {
-		return errors.WithStack(globalBeforeCommitCallback(proxy, writeQueries))
-	})
-	proxy.AfterCommitCallback(func() error {
-		return errors.WithStack(globalAfterCommitSuccessCallback(proxy))
-	}, func(isCritical bool, failureQueries []*QueryLog) error {
-		return errors.WithStack(globalAfterCommitFailureCallback(proxy, isCritical, failureQueries))
-	})
+	if proxy.beforeCommitCallback == nil {
+		proxy.BeforeCommitCallback(func(writeQueries []*QueryLog) error {
+			return errors.WithStack(globalBeforeCommitCallback(proxy, writeQueries))
+		})
+	}
+	if proxy.afterCommitSuccessCallback == nil && proxy.afterCommitFailureCallback == nil {
+		proxy.AfterCommitCallback(func() error {
+			return errors.WithStack(globalAfterCommitSuccessCallback(proxy))
+		}, func(isCritical bool, failureQueries []*QueryLog) error {
+			return errors.WithStack(globalAfterCommitFailureCallback(proxy, isCritical, failureQueries))
+		})
+	}
 	proxy.tx = tx
 }
 

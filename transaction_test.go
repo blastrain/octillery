@@ -320,6 +320,37 @@ func TestCommitCallbackForTx(t *testing.T) {
 	}
 }
 
+func TestCommitCallbackForTxSetCallbackBeforeQueryExec(t *testing.T) {
+	db, err := sql.Open("", "")
+	if err != nil {
+		t.Fatalf("%+v\n", err)
+	}
+	tx, err := db.Begin()
+	if err != nil {
+		t.Fatalf("%+v\n", err)
+	}
+	isInvokedBeforeCommitCallback := false
+	tx.BeforeCommitCallback(func(writeQueries []*sql.QueryLog) error {
+		isInvokedBeforeCommitCallback = true
+		return nil
+	})
+	isInvokedAfterCommitCallback := false
+	tx.AfterCommitCallback(func() error {
+		isInvokedAfterCommitCallback = true
+		return nil
+	}, func(isCriticalError bool, failureQueries []*sql.QueryLog) error {
+		return nil
+	})
+	insertRecords(tx, t)
+	checkErr(t, tx.Commit())
+	if !isInvokedBeforeCommitCallback {
+		t.Fatal("cannot invoke callback for before commit")
+	}
+	if !isInvokedAfterCommitCallback {
+		t.Fatal("cannot invoke callback for after commit")
+	}
+}
+
 func testIsAlreadyCommittedQueryLog(t *testing.T, queryLog *sql.QueryLog) {
 	initializeTables(t)
 	db, err := sql.Open("", "")
