@@ -53,28 +53,24 @@ func SetAfterCommitCallback(
 
 // Tx the compatible type of Tx in 'database/sql' package.
 type Tx struct {
-	tx                             *connection.TxConnection
-	connMgr                        *connection.DBConnectionManager
-	ctx                            context.Context
-	opts                           *core.TxOptions
-	beforeCommitCallback           func([]*QueryLog) error
-	afterCommitSuccessCallback     func() error
-	afterCommitFailureCallback     func(bool, []*QueryLog) error
-	beforeCommitCallbackAlreadySet bool
-	afterCommitCallbackAlreadySet  bool
+	tx                         *connection.TxConnection
+	connMgr                    *connection.DBConnectionManager
+	ctx                        context.Context
+	opts                       *core.TxOptions
+	beforeCommitCallback       func([]*QueryLog) error
+	afterCommitSuccessCallback func() error
+	afterCommitFailureCallback func(bool, []*QueryLog) error
 }
 
 // BeforeCommitCallback set callback function for before commit
 func (proxy *Tx) BeforeCommitCallback(callback func([]*QueryLog) error) {
 	proxy.beforeCommitCallback = callback
-	proxy.beforeCommitCallbackAlreadySet = true
 }
 
 // AfterCommitCallback set callback function for after commit
 func (proxy *Tx) AfterCommitCallback(success func() error, failure func(bool, []*QueryLog) error) {
 	proxy.afterCommitSuccessCallback = success
 	proxy.afterCommitFailureCallback = failure
-	proxy.afterCommitCallbackAlreadySet = true
 }
 
 // WriteQueries informations of executed INSERT/UPDATE/DELETE query
@@ -126,12 +122,12 @@ func (proxy *Tx) begin(conn *connection.DBConnection) {
 		return
 	}
 	tx := conn.Begin(proxy.ctx, proxy.opts)
-	if !proxy.beforeCommitCallbackAlreadySet {
+	if proxy.beforeCommitCallback == nil {
 		proxy.BeforeCommitCallback(func(writeQueries []*QueryLog) error {
 			return errors.WithStack(globalBeforeCommitCallback(proxy, writeQueries))
 		})
 	}
-	if !proxy.afterCommitCallbackAlreadySet {
+	if proxy.afterCommitSuccessCallback == nil && proxy.afterCommitFailureCallback == nil {
 		proxy.AfterCommitCallback(func() error {
 			return errors.WithStack(globalAfterCommitSuccessCallback(proxy))
 		}, func(isCritical bool, failureQueries []*QueryLog) error {
