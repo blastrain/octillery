@@ -64,6 +64,12 @@ type ConnPrepareContext interface {
 	PrepareContext(ctx context.Context, query string) (Stmt, error)
 }
 
+// Connector the compatible interface of Connector in 'database/sql/driver' package.
+type Connector interface {
+	Connect(context.Context) (Conn, error)
+	Driver() Driver
+}
+
 // IsolationLevel the compatible type of IsolationLevel in 'database/sql/driver' package.
 type IsolationLevel int
 

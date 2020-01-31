@@ -3,7 +3,7 @@ jobs:
   test:
     working_directory: /go/src/go.knocknote.io/octillery
     docker:
-    - image: golang:1.12
+    - image: golang:1.13
       environment:
         GO111MODULE: "on"
     steps:
