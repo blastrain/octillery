@@ -128,7 +128,7 @@ type TestRows struct {
 
 func (t *TestRows) Columns() []string {
 	if t.firstTime {
-		return []string{"name", "age", "is_god", "point"}
+		return []string{"name", "age", "is_god", "point", "power", "created_at"}
 	}
 	return []string{}
 }
@@ -143,6 +143,8 @@ func (t *TestRows) Next(dest []driver.Value) error {
 		dest[1] = 10
 		dest[2] = true
 		dest[3] = 3.14
+		dest[4] = 100
+		dest[5] = time.Date(2020, 01, 01, 12, 0, 0, 0, time.Local)
 		t.firstTime = false
 	} else {
 		return io.EOF
@@ -221,7 +223,7 @@ func testColumnType(t *testing.T, rows *Rows) {
 	t.Run("validate column type", func(t *testing.T) {
 		types, err := rows.ColumnTypes()
 		checkErr(t, err)
-		if len(types) != 4 {
+		if len(types) != 6 {
 			t.Fatal("cannot get columnTypes")
 		}
 		columnType := types[0]
@@ -250,12 +252,14 @@ func testRows(t *testing.T, rows *Rows) {
 	for {
 		for rows.Next() {
 			var (
-				name  string
-				age   int
-				isGod bool
-				point float32
+				name      string
+				age       int
+				isGod     bool
+				point     float32
+				power     int32
+				createdAt time.Time
 			)
-			checkErr(t, rows.Scan(&name, &age, &isGod, &point))
+			checkErr(t, rows.Scan(&name, &age, &isGod, &point, &power, &createdAt))
 			if name != "alice" {
 				t.Fatal("cannot scan")
 			}
@@ -266,6 +270,12 @@ func testRows(t *testing.T, rows *Rows) {
 				t.Fatal("cannot scan")
 			}
 			if int(point) != 3 {
+				t.Fatal("cannot scan")
+			}
+			if power != 100 {
+				t.Fatal("cannot scan")
+			}
+			if !createdAt.Equal(time.Date(2020, 01, 01, 12, 00, 00, 00, time.Local)) {
 				t.Fatal("cannot scan")
 			}
 		}
@@ -286,7 +296,7 @@ func testPrepareWithNotShardingTable(ctx context.Context, t *testing.T, db *DB) 
 		t.Run("validate columns", func(t *testing.T) {
 			columns, err := rows.Columns()
 			checkErr(t, err)
-			if len(columns) != 4 {
+			if len(columns) != 6 {
 				t.Fatal("cannot get columns")
 			}
 			testColumnType(t, rows)
@@ -300,12 +310,14 @@ func testPrepareWithNotShardingTable(ctx context.Context, t *testing.T, db *DB) 
 		defer rows.Close()
 		for rows.Next() {
 			var (
-				name  string
-				age   int
-				isGod bool
-				point float32
+				name      string
+				age       int
+				isGod     bool
+				point     float32
+				power     int32
+				createdAt time.Time
 			)
-			checkErr(t, rows.Scan(&name, &age, &isGod, &point))
+			checkErr(t, rows.Scan(&name, &age, &isGod, &point, &power, &createdAt))
 			if name != "alice" {
 				t.Fatal("cannot scan")
 			}
@@ -321,24 +333,28 @@ func testPrepareContextWithNotShardingTable(ctx context.Context, t *testing.T, d
 		defer stmt.Close()
 		t.Run("query row without context", func(t *testing.T) {
 			var (
-				name  string
-				age   int
-				isGod bool
-				point float32
+				name      string
+				age       int
+				isGod     bool
+				point     float32
+				power     int32
+				createdAt time.Time
 			)
-			stmt.QueryRow(1).Scan(&name, &age, &isGod, &point)
+			stmt.QueryRow(1).Scan(&name, &age, &isGod, &point, &power, &createdAt)
 			if name != "alice" {
 				t.Fatal("cannot scan")
 			}
 		})
 		t.Run("query row with context", func(t *testing.T) {
 			var (
-				name  string
-				age   int
-				isGod bool
-				point float32
+				name      string
+				age       int
+				isGod     bool
+				point     float32
+				power     int32
+				createdAt time.Time
 			)
-			stmt.QueryRowContext(ctx, 1).Scan(&name, &age, &isGod, &point)
+			stmt.QueryRowContext(ctx, 1).Scan(&name, &age, &isGod, &point, &power, &createdAt)
 			if name != "alice" {
 				t.Fatal("cannot scan")
 			}
@@ -454,12 +470,14 @@ func testTransactionStmtError(t *testing.T, tx *Tx, stmt *Stmt) {
 func testTransactionQueryRowWithoutContext(t *testing.T, stmt *Stmt) {
 	t.Run("query row without context", func(t *testing.T) {
 		var (
-			name  NullString
-			age   NullInt64
-			isGod NullBool
-			point NullFloat64
+			name      NullString
+			age       NullInt64
+			isGod     NullBool
+			point     NullFloat64
+			power     NullInt32
+			createdAt NullTime
 		)
-		checkErr(t, stmt.QueryRow(1).Scan(&name, &age, &isGod, &point))
+		checkErr(t, stmt.QueryRow(1).Scan(&name, &age, &isGod, &point, &power, &createdAt))
 		nameValue, err := name.Value()
 		checkErr(t, err)
 		if nameValue.(string) != "alice" {
@@ -490,13 +508,15 @@ func testTransactionQueryRowWithoutContext(t *testing.T, stmt *Stmt) {
 
 func testTransactionQueryWithContext(ctx context.Context, t *testing.T, stmt *Stmt) {
 	var (
-		name  NullString
-		age   NullInt64
-		isGod NullBool
-		point NullFloat64
+		name      NullString
+		age       NullInt64
+		isGod     NullBool
+		point     NullFloat64
+		power     NullInt32
+		createdAt NullTime
 	)
 	t.Run("query row with context", func(t *testing.T) {
-		stmt.QueryRowContext(ctx, 1).Scan(&name, &age, &isGod, &point)
+		stmt.QueryRowContext(ctx, 1).Scan(&name, &age, &isGod, &point, &power, &createdAt)
 		nameValue, err := name.Value()
 		checkErr(t, err)
 		if nameValue.(string) != "alice" {
