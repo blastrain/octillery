@@ -29,13 +29,13 @@ We need database sharding library in Go. Of course, we know some libraries like 
 ## Install as a CLI tool
 
 ```shell
-go get -u go.knocknote.io/octillery/cmd/octillery
+go get go.knocknote.io/octillery/cmd/octillery
 ```
 
 ## Install as a library
 
 ```shell
-go get -u go.knocknote.io/octillery
+go get go.knocknote.io/octillery
 ```
 
 # How It Works
@@ -215,13 +215,13 @@ If you want to use new algorithm, need to the following two steps.
 ## 1. Install CLI tool
 
 ```shell
-$ go get -u go.knocknote.io/octillery/cmd/octillery
+$ go get go.knocknote.io/octillery/cmd/octillery
 ```
 
 ## 2. Install library
 
 ```shell
-$ go get -u go.knocknote.io/octillery
+$ go get go.knocknote.io/octillery
 ```
 
 
