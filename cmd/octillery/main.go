@@ -377,13 +377,14 @@ func (cmd *ImportCommand) Execute(args []string) error {
 		}
 		seeds, err := os.Open(path)
 		if err != nil {
-			return errors.WithStack(err)
+			return errors.Wrapf(err, "failed to open file %s", path)
 		}
+		defer seeds.Close()
 		reader := csv.NewReader(seeds)
 		reader.LazyQuotes = true
 		records, err := reader.ReadAll()
 		if err != nil {
-			return errors.WithStack(err)
+			return errors.Wrapf(err, "failed to read file %s", path)
 		}
 		importTables[tableName] = records
 		return nil
