@@ -10,6 +10,7 @@ import:
 - package: github.com/mattn/go-sqlite3
 - package: github.com/go-sql-driver/mysql
 - package: github.com/schemalex/schemalex
+- package: github.com/github/gh-ost/go
 testImport:
 - package: gopkg.in/gorp.v1
 - package: github.com/gocraft/dbr
