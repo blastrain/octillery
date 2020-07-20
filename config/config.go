@@ -24,11 +24,11 @@ type DatabaseConfig struct {
 	// login password to database server
 	Password string `yaml:"password"`
 
-	// master server's dsn list ( currently support single master only )
-	Masters []string `yaml:"master"`
+	// main server's dsn list ( currently support single main only )
+	Mains []string `yaml:"main"`
 
-	// slave server's dsn list ( currently not support )
-	Slaves []string `yaml:"slave"`
+	// subordinate server's dsn list ( currently not support )
+	Subordinates []string `yaml:"subordinate"`
 
 	// backup server's dsn list ( currently not support )
 	Backups []string `yaml:"backup"`

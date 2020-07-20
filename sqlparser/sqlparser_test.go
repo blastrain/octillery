@@ -976,7 +976,7 @@ func TestERROR(t *testing.T) {
 		log.Println(err)
 	})
 	t.Run("unsupport query", func(t *testing.T) {
-		query, err := parser.Parse("show slave status")
+		query, err := parser.Parse("show subordinate status")
 		if query != nil {
 			t.Fatal("invalid query value")
 		}

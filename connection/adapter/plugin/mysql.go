@@ -63,12 +63,12 @@ func (adapter *MySQLAdapter) NextSequenceID(conn *sql.DB, tableName string) (int
 
 // ExecDDL create database if not exists by database configuration file.
 func (adapter *MySQLAdapter) ExecDDL(config *config.DatabaseConfig) error {
-	if len(config.Masters) > 1 {
-		return errors.New("Sorry, currently supports single master database only")
+	if len(config.Mains) > 1 {
+		return errors.New("Sorry, currently supports single main database only")
 	}
 	dbname := config.NameOrPath
-	for _, master := range config.Masters {
-		serverDsn := fmt.Sprintf("%s:%s@tcp(%s)/", config.Username, config.Password, master)
+	for _, main := range config.Mains {
+		serverDsn := fmt.Sprintf("%s:%s@tcp(%s)/", config.Username, config.Password, main)
 		serverConn, err := sql.Open(config.Adapter, serverDsn)
 		defer serverConn.Close()
 		if err != nil {
@@ -79,17 +79,17 @@ func (adapter *MySQLAdapter) ExecDDL(config *config.DatabaseConfig) error {
 		}
 		return nil
 	}
-	return errors.New("must define 'master' server")
+	return errors.New("must define 'main' server")
 }
 
 // OpenConnection open connection by database configuration file
 func (adapter *MySQLAdapter) OpenConnection(config *config.DatabaseConfig, queryString string) (*sql.DB, error) {
-	if len(config.Masters) > 1 {
-		return nil, errors.New("Sorry, currently supports single master database only")
+	if len(config.Mains) > 1 {
+		return nil, errors.New("Sorry, currently supports single main database only")
 	}
 	dbname := config.NameOrPath
-	for _, master := range config.Masters {
-		dsn := fmt.Sprintf("%s:%s@tcp(%s)/%s?%s", config.Username, config.Password, master, dbname, queryString)
+	for _, main := range config.Mains {
+		dsn := fmt.Sprintf("%s:%s@tcp(%s)/%s?%s", config.Username, config.Password, main, dbname, queryString)
 		debug.Printf("dsn = %s", strings.Replace(dsn, "%", "%%", -1))
 		conn, err := sql.Open(config.Adapter, dsn)
 		if err != nil {
@@ -97,9 +97,9 @@ func (adapter *MySQLAdapter) OpenConnection(config *config.DatabaseConfig, query
 		}
 		return conn, nil
 	}
-	for _, slave := range config.Slaves {
-		dsn := fmt.Sprintf("%s:%s@tcp(%s)/%s?%s", config.Username, config.Password, slave, dbname, queryString)
-		debug.Printf("TODO: not support slave. dsn = %s", dsn)
+	for _, subordinate := range config.Subordinates {
+		dsn := fmt.Sprintf("%s:%s@tcp(%s)/%s?%s", config.Username, config.Password, subordinate, dbname, queryString)
+		debug.Printf("TODO: not support subordinate. dsn = %s", dsn)
 		break
 	}
 
@@ -107,7 +107,7 @@ func (adapter *MySQLAdapter) OpenConnection(config *config.DatabaseConfig, query
 		dsn := fmt.Sprintf("%s:%s@tcp(%s)/%s?%s", config.Username, config.Password, backup, dbname, queryString)
 		debug.Printf("TODO: not support backup. dsn = %s", dsn)
 	}
-	return nil, errors.New("must define 'master' server")
+	return nil, errors.New("must define 'main' server")
 }
 
 // CreateSequencerTableIfNotExists create table for sequencer if not exists

@@ -36,8 +36,8 @@ type Connection interface {
 type DBShardConnection struct {
 	ShardName  string
 	Connection *sql.DB
-	Masters    []*sql.DB
-	Slaves     []*sql.DB
+	Mains    []*sql.DB
+	Subordinates     []*sql.DB
 	dsn        string
 }
 
@@ -105,7 +105,7 @@ func (c *DBShardConnections) AllShard() []*DBShardConnection {
 	return c.connList
 }
 
-// DBConnection has connection to sequencer or master server or all shards
+// DBConnection has connection to sequencer or main server or all shards
 type DBConnection struct {
 	Config             *config.TableConfig
 	Algorithm          algorithm.ShardingAlgorithm
@@ -354,8 +354,8 @@ func (c *TxConnection) Rollback() error {
 // DSN returns DSN for not sharded database
 func (c *DBConnection) DSN() string {
 	cfg := c.Config
-	if len(cfg.Masters) > 0 {
-		return fmt.Sprintf("%s/%s", cfg.Masters[0], cfg.NameOrPath)
+	if len(cfg.Mains) > 0 {
+		return fmt.Sprintf("%s/%s", cfg.Mains[0], cfg.NameOrPath)
 	}
 	return fmt.Sprintf("%s", cfg.NameOrPath)
 }
@@ -418,7 +418,7 @@ func (c *DBConnection) EqualDSN(conn *DBConnection) bool {
 	if c.Config.NameOrPath != conn.Config.NameOrPath {
 		return false
 	}
-	if len(c.Config.Masters) != len(conn.Config.Masters) {
+	if len(c.Config.Mains) != len(conn.Config.Mains) {
 		return false
 	}
 	if c.Config.IsShard != conn.Config.IsShard {
@@ -431,19 +431,19 @@ func (c *DBConnection) EqualDSN(conn *DBConnection) bool {
 				if shard.NameOrPath != shardConn.NameOrPath {
 					return false
 				}
-				if len(shard.Masters) != len(shardConn.Masters) {
+				if len(shard.Mains) != len(shardConn.Mains) {
 					return false
 				}
-				for idx, master := range shard.Masters {
-					if master != shardConn.Masters[idx] {
+				for idx, main := range shard.Mains {
+					if main != shardConn.Mains[idx] {
 						return false
 					}
 				}
 			}
 		}
 	} else {
-		for idx, master := range c.Config.Masters {
-			if master != conn.Config.Masters[idx] {
+		for idx, main := range c.Config.Mains {
+			if main != conn.Config.Mains[idx] {
 				return false
 			}
 		}
@@ -734,8 +734,8 @@ func (cm *DBConnectionManager) openShardConnection(tableName string, table *conf
 			cm.setConnectionSettings(shardConn)
 			conns = append(conns, shardConn)
 			var dsn string
-			if len(shardValue.Masters) > 0 {
-				dsn = fmt.Sprintf("%s/%s", shardValue.Masters[0], shardValue.NameOrPath)
+			if len(shardValue.Mains) > 0 {
+				dsn = fmt.Sprintf("%s/%s", shardValue.Mains[0], shardValue.NameOrPath)
 			} else {
 				dsn = shardValue.NameOrPath
 			}
