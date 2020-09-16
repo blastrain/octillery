@@ -1,7 +1,7 @@
 package sqlparser
 
 import (
-	vtparser "github.com/knocknote/vitess-sqlparser/sqlparser"
+	vtparser "github.com/blastrain/vitess-sqlparser/sqlparser"
 )
 
 // Identifier the type for sharding key
@@ -34,7 +34,6 @@ const (
 	TruncateTable
 	// Show 'SHOW' query type
 	Show
-
 )
 
 func (t QueryType) IsWriteQuery() bool {
@@ -171,3 +170,4 @@ func (q *DeleteQuery) setStateAfterParsing() {
 	q.IsAllShardQuery = q.IsNotFoundShardKeyID() &&
 		(q.Stmt.Where != nil || q.Stmt.OrderBy != nil || q.Stmt.Limit != nil)
 }
+

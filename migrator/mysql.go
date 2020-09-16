@@ -7,7 +7,7 @@ import (
 	"strings"
 	"unicode"
 
-	vtparser "github.com/knocknote/vitess-sqlparser/sqlparser"
+	vtparser "github.com/blastrain/vitess-sqlparser/sqlparser"
 	"github.com/pkg/errors"
 	"github.com/schemalex/schemalex"
 	"github.com/schemalex/schemalex/diff"
