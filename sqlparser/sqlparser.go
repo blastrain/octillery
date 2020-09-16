@@ -9,8 +9,8 @@ import (
 
 	vtparser "github.com/blastrain/vitess-sqlparser/sqlparser"
 	"github.com/pkg/errors"
-	"go.blastrain.io/octillery/config"
-	"go.blastrain.io/octillery/debug"
+	"go.knocknote.io/octillery/config"
+	"go.knocknote.io/octillery/debug"
 )
 
 // Parser the structure for parsing SQL
