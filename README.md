@@ -1,4 +1,4 @@
-# Octillery [![GoDoc](https://godoc.org/go.knocknote.io/octillery?status.svg)](https://godoc.org/go.knocknote.io/octillery) [![CircleCI](https://circleci.com/gh/knocknote/octillery.svg?style=shield)](https://circleci.com/gh/knocknote/octillery)  [![codecov](https://codecov.io/gh/knocknote/octillery/branch/master/graph/badge.svg?token=hRKqugQMsg)](https://codecov.io/gh/knocknote/octillery) [![Go Report Card](https://goreportcard.com/badge/go.knocknote.io/octillery)](https://goreportcard.com/report/go.knocknote.io/octillery)
+# Octillery [![GoDoc](https://godoc.org/go.knocknote.io/octillery?status.svg)](https://godoc.org/go.knocknote.io/octillery) [![CircleCI](https://circleci.com/gh/blastrain/octillery.svg?style=shield)](https://circleci.com/gh/blastrain/octillery)  [![codecov](https://codecov.io/gh/blastrain/octillery/branch/master/graph/badge.svg?token=hRKqugQMsg)](https://codecov.io/gh/blastrain/octillery) [![Go Report Card](https://goreportcard.com/badge/go.knocknote.io/octillery)](https://goreportcard.com/report/go.knocknote.io/octillery)
 
 
 <img width="300px" height="238px" src="https://user-images.githubusercontent.com/209884/29391665-d1d6e1d0-8333-11e7-9a33-1db3dc9d2f72.png"></img>
@@ -192,7 +192,7 @@ Therefore, OR Mapping library call `Octillery`'s interface. and it can capture a
 
 ### How To Parse SQL
 
-`Octillery` use [github.com/knocknote/vitess-sqlparser](https://github.com/knocknote/vitess-sqlparser) as SQL parser. It implements powered by `vitess` and `tidb` .
+`Octillery` use [github.com/blastrain/vitess-sqlparser](https://github.com/blastrain/vitess-sqlparser) as SQL parser. It implements powered by `vitess` and `tidb` .
 
 ### How To Use New Database Adapter
 
@@ -316,7 +316,7 @@ $ make test
 
 # See also
 
-- `sqlparser` : https://github.com/knocknote/vitess-sqlparser
+- `sqlparser` : https://github.com/blastrain/vitess-sqlparser
 - `schemalex` : https://github.com/schemalex/schemalex
 
 # Committers

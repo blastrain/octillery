@@ -11,7 +11,7 @@ imports:
   version: 460c7bb0abd6e927f2767cadc91aa6ef776a98b4
 - name: github.com/juju/errors
   version: c7d06af17c68cd34c835053720b21f6549d9b0ee
-- name: github.com/knocknote/vitess-sqlparser
+- name: github.com/blastrain/vitess-sqlparser
   version: 1003c43917a3ddbe167e102b99020cefacdd7e0c
   subpackages:
   - bytes2

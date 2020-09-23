@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 	"sync"
 
-	vtparser "github.com/knocknote/vitess-sqlparser/sqlparser"
+	vtparser "github.com/blastrain/vitess-sqlparser/sqlparser"
 	"github.com/pkg/errors"
 	"go.knocknote.io/octillery/connection"
 	"go.knocknote.io/octillery/sqlparser"

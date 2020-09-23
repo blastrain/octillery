@@ -7,7 +7,7 @@ import (
 	"strconv"
 	"time"
 
-	vtparser "github.com/knocknote/vitess-sqlparser/sqlparser"
+	vtparser "github.com/blastrain/vitess-sqlparser/sqlparser"
 	"github.com/pkg/errors"
 	"go.knocknote.io/octillery/config"
 	"go.knocknote.io/octillery/debug"
@@ -518,7 +518,7 @@ func (p *Parser) formatQuery(query string) string {
 	return formattedQuery
 }
 
-// Parse parse SQL/DDL by [knocknote/vitess-sqlparser](https://github.com/knocknote/vitess-sqlparser),
+// Parse parse SQL/DDL by [blastrain/vitess-sqlparser](https://github.com/blastrain/vitess-sqlparser),
 // it returns Query interface includes table name or query type
 // nolint: gocyclo
 func (p *Parser) Parse(queryText string, args ...interface{}) (Query, error) {

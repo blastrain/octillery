@@ -3,7 +3,7 @@ package sql
 import (
 	"fmt"
 
-	vtparser "github.com/knocknote/vitess-sqlparser/sqlparser"
+	vtparser "github.com/blastrain/vitess-sqlparser/sqlparser"
 	"github.com/pkg/errors"
 	"go.knocknote.io/octillery/exec"
 	"go.knocknote.io/octillery/sqlparser"

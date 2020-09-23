@@ -16,8 +16,8 @@ import (
 	"strings"
 	"time"
 
+	vtparser "github.com/blastrain/vitess-sqlparser/sqlparser"
 	flags "github.com/jessevdk/go-flags"
-	vtparser "github.com/knocknote/vitess-sqlparser/sqlparser"
 	"github.com/pkg/errors"
 	"go.knocknote.io/octillery"
 	"go.knocknote.io/octillery/algorithm"
