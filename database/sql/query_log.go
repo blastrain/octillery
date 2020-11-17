@@ -5,6 +5,7 @@ import (
 
 	vtparser "github.com/blastrain/vitess-sqlparser/sqlparser"
 	"github.com/pkg/errors"
+	"go.knocknote.io/octillery/debug"
 	"go.knocknote.io/octillery/exec"
 	"go.knocknote.io/octillery/sqlparser"
 )
@@ -248,7 +249,30 @@ func (t *Tx) mergeComparisonExprs(comparisonExprs []*vtparser.ComparisonExpr) vt
 
 func (t *Tx) createEqualComparisonExprWithArgs(left vtparser.Expr, right vtparser.Expr, args []interface{}) *vtparser.ComparisonExpr {
 	parser, _ := sqlparser.New()
-	val := right.(*vtparser.SQLVal)
+	switch val := right.(type) {
+	case *vtparser.SQLVal:
+		return &vtparser.ComparisonExpr{
+			Operator: vtparser.EqualStr,
+			Left:     left,
+			Right:    t.covertValArgToRealValue(parser, val, args),
+		}
+	case vtparser.ValTuple:
+		values := make(vtparser.ValTuple, len(val))
+		for idx, value := range val {
+			values[idx] = t.covertValArgToRealValue(parser, value.(*vtparser.SQLVal), args)
+		}
+		return &vtparser.ComparisonExpr{
+			Operator: vtparser.InStr,
+			Left:     left,
+			Right:    values,
+		}
+	default:
+		debug.Printf("[WARN] unexpected expr value %T", val)
+		return nil
+	}
+}
+
+func (t *Tx) covertValArgToRealValue(parser *sqlparser.Parser, val *vtparser.SQLVal, args []interface{}) *vtparser.SQLVal {
 	if val.Type == vtparser.ValArg {
 		arg := args[parser.ValueIndexByValArg(val)-1]
 		switch arg.(type) {
@@ -258,11 +282,7 @@ func (t *Tx) createEqualComparisonExprWithArgs(left vtparser.Expr, right vtparse
 			val = vtparser.NewStrVal([]byte(arg.(string)))
 		}
 	}
-	return &vtparser.ComparisonExpr{
-		Operator: vtparser.EqualStr,
-		Left:     left,
-		Right:    val,
-	}
+	return val
 }
 
 func (t *Tx) exprToComparisonExprs(expr vtparser.Expr, args []interface{}) []*vtparser.ComparisonExpr {
