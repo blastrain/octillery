@@ -434,4 +434,8 @@ func TestIsAlreadyCommittedUpdateQueryLog(t *testing.T) {
 		Query: "UPDATE user_stages set name = ?, age = 5 where user_id = ?",
 		Args:  []interface{}{"alice", 10},
 	})
+	testIsAlreadyCommittedQueryLog(t, &sql.QueryLog{
+		Query: "UPDATE user_stages set name = ?, age = 5 where user_id IN (?,?)",
+		Args:  []interface{}{"alice", 5, 10},
+	})
 }
