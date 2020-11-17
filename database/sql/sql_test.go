@@ -340,7 +340,9 @@ func testPrepareContextWithNotShardingTable(ctx context.Context, t *testing.T, d
 				power     int32
 				createdAt time.Time
 			)
-			stmt.QueryRow(1).Scan(&name, &age, &isGod, &point, &power, &createdAt)
+			if err := stmt.QueryRow(1).Scan(&name, &age, &isGod, &point, &power, &createdAt); err != nil {
+				t.Fatal(err)
+			}
 			if name != "alice" {
 				t.Fatal("cannot scan")
 			}
@@ -354,7 +356,9 @@ func testPrepareContextWithNotShardingTable(ctx context.Context, t *testing.T, d
 				power     int32
 				createdAt time.Time
 			)
-			stmt.QueryRowContext(ctx, 1).Scan(&name, &age, &isGod, &point, &power, &createdAt)
+			if err := stmt.QueryRowContext(ctx, 1).Scan(&name, &age, &isGod, &point, &power, &createdAt); err != nil {
+				t.Fatal(err)
+			}
 			if name != "alice" {
 				t.Fatal("cannot scan")
 			}
