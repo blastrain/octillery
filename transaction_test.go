@@ -402,9 +402,22 @@ func TestIsAlreadyCommittedQueryLogErrorCase(t *testing.T) {
 }
 
 func TestIsAlreadyCommittedDeleteQueryLog(t *testing.T) {
-	testIsAlreadyCommittedQueryLog(t, &sql.QueryLog{
-		Query: "DELETE from user_stages WHERE id = ? AND user_id = ?",
-		Args:  []interface{}{1, 10},
+	t.Run("simple", func(t *testing.T) {
+		testIsAlreadyCommittedQueryLog(t, &sql.QueryLog{
+			Query: "DELETE from user_stages WHERE id = ? AND user_id = ?",
+			Args:  []interface{}{1, 10},
+		})
+	})
+
+	t.Run("included IN", func(t *testing.T) {
+		testIsAlreadyCommittedQueryLog(t, &sql.QueryLog{
+			Query: "DELETE from user_stages WHERE id IN (1,?,?) AND user_id = ?",
+			Args:  []interface{}{2, 3, 10},
+		})
+		testIsAlreadyCommittedQueryLog(t, &sql.QueryLog{
+			Query: "DELETE from user_items WHERE id IN (?,?) AND user_id = 10",
+			Args:  []interface{}{1, 2},
+		})
 	})
 }
 
@@ -420,5 +433,9 @@ func TestIsAlreadyCommittedUpdateQueryLog(t *testing.T) {
 	testIsAlreadyCommittedQueryLog(t, &sql.QueryLog{
 		Query: "UPDATE user_stages set name = ?, age = 5 where user_id = ?",
 		Args:  []interface{}{"alice", 10},
+	})
+	testIsAlreadyCommittedQueryLog(t, &sql.QueryLog{
+		Query: "UPDATE user_stages set name = ?, age = 5 where user_id IN (?,?)",
+		Args:  []interface{}{"alice", 5, 10},
 	})
 }
