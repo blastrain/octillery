@@ -4,7 +4,7 @@ import:
 - package: github.com/jessevdk/go-flags
 - package: github.com/sergi/go-diff
 - package: github.com/blastrain/vitess-sqlparser
-  version: 1003c43917a3ddbe167e102b99020cefacdd7e0c
+  version: a139afbb1abad0805ea6a4e2c0fd4e513a3e0939
 - package: github.com/pkg/errors
 - package: gopkg.in/yaml.v2
 - package: github.com/mattn/go-sqlite3

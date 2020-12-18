@@ -2,6 +2,7 @@ package config
 
 import (
 	"io/ioutil"
+	"os"
 
 	"github.com/pkg/errors"
 	"gopkg.in/yaml.v2"
@@ -148,8 +149,9 @@ func Load(configPath string) (*Config, error) {
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
+	content := []byte(os.ExpandEnv(string(yamlFile)))
 	config := &Config{DistributedTransaction: true}
-	if err := yaml.Unmarshal(yamlFile, &config); err != nil {
+	if err := yaml.Unmarshal(content, &config); err != nil {
 		return nil, errors.WithStack(err)
 	}
 	globalConfig = config
