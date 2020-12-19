@@ -8,6 +8,8 @@ github.com/fatih/color v0.0.0-20160317093153-533cd7fd8a85 h1:i30JFHNBhahPa7hSaGn
 github.com/fatih/color v0.0.0-20160317093153-533cd7fd8a85/go.mod h1:Zm6kSWBoL9eyXnKyktHP6abPY2pDugNf5KwzbycvMj4=
 github.com/go-sql-driver/mysql v1.3.0 h1:pgwjLi/dvffoP9aabwkT3AKpXQM93QARkjFhDDqC1UE=
 github.com/go-sql-driver/mysql v1.3.0/go.mod h1:zAC/RDZ24gD3HViQzih4MyKcchzm+sOG5ZlKdlhCg5w=
+github.com/go-sql-driver/mysql v1.5.0 h1:ozyZYNQW3x3HtqT1jira07DN2PArx2v7/mN66gGcHOs=
+github.com/go-sql-driver/mysql v1.5.0/go.mod h1:DCzpHaOWr8IXmIStZouvnhqoel9Qv2LBy8hT2VhHyBg=
 github.com/jessevdk/go-flags v0.0.0-20170212220246-460c7bb0abd6 h1:3sqgDDcqnooPDgktvzvan9LN4PGl3N0NqSk1ostdtqw=
 github.com/jessevdk/go-flags v0.0.0-20170212220246-460c7bb0abd6/go.mod h1:4FA24M0QyGHXBuZZK/XkWh8h0e1EYbRYJSGM75WSRxI=
 github.com/juju/errors v0.0.0-20170703010042-c7d06af17c68 h1:d2hBkTvi7B89+OXY8+bBBshPlc+7JYacGrG/dFak8SQ=
