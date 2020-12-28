@@ -808,6 +808,9 @@ func setupDBFromConfig(config *config.Config) error {
 	if config == nil {
 		return errors.New("cannot setup database connection. config is nil")
 	}
+	if config.SkipAutoSetup {
+		return nil
+	}
 	for tableName, table := range config.Tables {
 		var err error
 		if table.IsShard {
