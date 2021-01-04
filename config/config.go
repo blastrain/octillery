@@ -98,6 +98,8 @@ type Config struct {
 	DistributedTransaction bool `yaml:"distributed_transaction"`
 	// map table name and configuration
 	Tables map[string]*TableConfig `yaml:"tables"`
+	// if true skip auto create database
+	SkipAutoSetup bool `yaml:"skip_auto_setup"`
 }
 
 // ShardColumnName column name of unique id for all shards
