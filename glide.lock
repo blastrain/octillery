@@ -6,7 +6,7 @@ imports:
 - name: github.com/fatih/color
   version: 533cd7fd8a85905f67a1753afb4deddc85ea174f
 - name: github.com/go-sql-driver/mysql
-  version: a0583e0143b1624142adab07e0e97fe106d99561
+  version: 17ef3dd9d98b69acec3e85878995ada9533a9370
 - name: github.com/jessevdk/go-flags
   version: 460c7bb0abd6e927f2767cadc91aa6ef776a98b4
 - name: github.com/juju/errors
@@ -44,7 +44,7 @@ imports:
 - name: github.com/pkg/errors
   version: 059132a15dd08d6704c67711dae0cf35ab991756
 - name: github.com/schemalex/schemalex
-  version: 1c8484e3c7bca1be48e37acfcce70a5a9a3920ab
+  version: 5105e4d60ee01062e413499ea502307d8d89ae4a
   subpackages:
   - diff
   - format
