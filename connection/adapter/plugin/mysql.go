@@ -66,20 +66,26 @@ func (adapter *MySQLAdapter) ExecDDL(config *config.DatabaseConfig) error {
 	if len(config.Masters) > 1 {
 		return errors.New("Sorry, currently supports single master database only")
 	}
-	dbname := config.NameOrPath
 	for _, master := range config.Masters {
-		serverDsn := fmt.Sprintf("%s:%s@tcp(%s)/", config.Username, config.Password, master)
-		serverConn, err := sql.Open(config.Adapter, serverDsn)
-		defer serverConn.Close()
-		if err != nil {
-			return errors.Wrapf(err, "cannot open connection from %s", serverDsn)
-		}
-		if _, err := serverConn.Exec(fmt.Sprintf(`CREATE DATABASE IF NOT EXISTS %s`, dbname)); err != nil {
-			return errors.Wrapf(err, "cannot create database %s", dbname)
+		if err := adapter.execDDL(config, master); err != nil {
+			return errors.Wrap(err, "cannot execute DDL")
 		}
 		return nil
 	}
 	return errors.New("must define 'master' server")
+}
+
+func (adapter *MySQLAdapter) execDDL(config *config.DatabaseConfig, master string) error {
+	serverDsn := fmt.Sprintf("%s:%s@tcp(%s)/", config.Username, config.Password, master)
+	serverConn, err := sql.Open(config.Adapter, serverDsn)
+	if err != nil {
+		return errors.Wrapf(err, "cannot open connection from %s", serverDsn)
+	}
+	defer serverConn.Close()
+	if _, err := serverConn.Exec(fmt.Sprintf(`CREATE DATABASE IF NOT EXISTS %s`, config.NameOrPath)); err != nil {
+		return errors.Wrapf(err, "cannot create database %s", config.NameOrPath)
+	}
+	return nil
 }
 
 // OpenConnection open connection by database configuration file
