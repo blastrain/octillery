@@ -71,8 +71,9 @@ type ConsoleCommand struct {
 
 // InstallCommand type for install command
 type InstallCommand struct {
-	MySQLAdapter  bool `long:"mysql"  description:"install mysql adapter"`
-	SQLiteAdapter bool `long:"sqlite" description:"install sqlite3 adapter"`
+	MySQLAdapter      bool `long:"mysql"    description:"install mysql adapter"`
+	PostgreSQLAdapter bool `long:"postgres" description:"install postgres adapter"`
+	SQLiteAdapter     bool `long:"sqlite"   description:"install sqlite3 adapter"`
 }
 
 // ShardCommand type for shard command
@@ -560,10 +561,12 @@ func (cmd *InstallCommand) installToPath(sourcePath string) error {
 	var adapterPath string
 	if cmd.MySQLAdapter {
 		adapterPath = filepath.Join(adapterBasePath, "mysql.go")
+	} else if cmd.PostgreSQLAdapter {
+		adapterPath = filepath.Join(adapterBasePath, "postgres.go")
 	} else if cmd.SQLiteAdapter {
 		adapterPath = filepath.Join(adapterBasePath, "sqlite3.go")
 	} else {
-		return errors.New("unknown adapter name. currently supports '--mysql' or '--sqlite' only")
+		return errors.New("unknown adapter name. currently supports '--mysql' or '--postgres' or '--sqlite' only")
 	}
 	adapterData, err := ioutil.ReadFile(adapterPath)
 	if err != nil {
