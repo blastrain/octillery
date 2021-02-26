@@ -10,10 +10,10 @@ import (
 
 // DatabaseConfig type for database definition
 type DatabaseConfig struct {
-	// database name of MySQL or database file path of SQLite
+	// database name of MySQL or database name of PostgreSQL or database file path of SQLite
 	NameOrPath string `yaml:"database"`
 
-	// adapter name ( 'mysql' or 'sqlite3' )
+	// adapter name ( 'mysql' or 'postgres' or 'sqlite3' )
 	Adapter string `yaml:"adapter"`
 
 	// database encoding like utf8mb4

@@ -1,0 +1,26 @@
+default: &default
+  database: octillery_gorp
+  adapter: postgres
+  encoding: utf8
+  username: postgres
+  master:
+    - localhost:5432
+
+tables:
+  posts:
+    shard: true
+    shard_column: post_id
+    algorithm: hashmap
+    sequencer:
+      <<: *default
+      database: octillery_gorp_posts_seq
+    shards:
+      - post_shard_1:
+          <<: *default
+          database: octillery_gorp_posts_shard_1
+      - post_shard_2:
+          <<: *default
+          database: octillery_gorp_posts_shard_2
+  tests:
+    <<: *default
+    database: octillery_gorp_tests

@@ -31,4 +31,4 @@ install_plugin:
 	go run cmd/octillery/main.go install --sqlite
 
 uninstall_plugin:
-	rm -f plugin/{mysql,sqlite3}.go
+	rm -f plugin/{mysql,postgres,sqlite3}.go

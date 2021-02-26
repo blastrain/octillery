@@ -1,3 +1,4 @@
 plugin/mysql.go
+plugin/postgres.go
 plugin/sqlite3.go
 vendor
