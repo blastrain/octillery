@@ -8,6 +8,7 @@ require (
 	github.com/fatih/color v0.0.0-20160317093153-533cd7fd8a85
 	github.com/go-sql-driver/mysql v1.5.0
 	github.com/jessevdk/go-flags v0.0.0-20170212220246-460c7bb0abd6
+	github.com/lib/pq v1.9.0
 	github.com/mattn/go-colorable v0.0.0-20160220075935-9cbef7c35391 // indirect
 	github.com/mattn/go-isatty v0.0.0-20151211000621-56b76bdf51f7 // indirect
 	github.com/mattn/go-sqlite3 v0.0.0-20170407154627-cf7286f069c3
