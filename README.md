@@ -6,7 +6,7 @@
 `Octillery` is a Go package for sharding databases.
 It can use with every OR Mapping library ( `xorm` , `gorp` , `gorm` , `dbr` ...) implementing `database/sql` interface, or raw SQL.
 
-Currently supports `MySQL` (for product) and `SQLite3` (for testing) .
+Currently supports `MySQL` (for product) and `PostgreSQL` (for testing) and `SQLite3` (for testing).
 
 # Motivation
 
@@ -17,7 +17,7 @@ We need database sharding library in Go. Of course, we know some libraries like 
 - Supports every OR Mapping library implementing `database/sql` interface ( `xorm` , `gorp` , `gorm` , `dbr` , ... )
 - Supports using `database/sql` ( raw SQL ) directly
 - Pluggable sharding algorithm ( preinstalled algorithms are `modulo` and `hashmap` )
-- Pluggable database adapter ( preinstalled adapters are `mysql` and `sqlite3` )
+- Pluggable database adapter ( preinstalled adapters are `mysql` and `postgres` and `sqlite3` )
 - Declarative describing for sharding configuration in `YAML`
 - Configurable sharding algorithm, database adapter, sharding key, whether use sequencer or not.
 - Supports capture read/write queries just before passing to database driver
@@ -196,7 +196,7 @@ Therefore, OR Mapping library call `Octillery`'s interface. and it can capture a
 
 ### How To Use New Database Adapter
 
-`Octillery` supports `mysql` and `sqlite3` adapter by default.  
+`Octillery` supports `mysql` and `postgres` and `sqlite3` adapter by default.  
 If you want to use new database adapter, need to the following two steps.
 
 1. Write `DBAdapter` interface. ( see https://godoc.org/go.knocknote.io/octillery/connection/adapter )
