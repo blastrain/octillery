@@ -1,0 +1,23 @@
+default: &default
+  database: octillery_dbr
+  adapter: postgres
+  encoding: utf8
+  username: postgres
+  master:
+    - localhost:5432
+
+tables:
+  members:
+    shard: true
+    shard_column: id
+    algorithm: hashmap
+    sequencer:
+      <<: *default
+      database: octillery_dbr_members_seq
+    shards:
+      - member_shard_1:
+          <<: *default
+          database: octillery_dbr_members_shard_1
+      - member_shard_2:
+          <<: *default
+          database: octillery_dbr_members_shard_2
