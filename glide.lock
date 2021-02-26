@@ -1,16 +1,6 @@
-hash: a53ba18529b4efb8804dfa0ea9c635971afa262a64a68650a1795b70f8c9bcc3
-updated: 2018-11-26T12:18:29.992047+09:00
+hash: 434d5eadc5255573660bd11ee4665a91d946842bd375653340b74979afe25874
+updated: 2021-02-22T23:25:04.176645+09:00
 imports:
-- name: github.com/deckarep/golang-set
-  version: 699df6a3acf6867538e50931511e9dc403da108a
-- name: github.com/fatih/color
-  version: 533cd7fd8a85905f67a1753afb4deddc85ea174f
-- name: github.com/go-sql-driver/mysql
-  version: 17ef3dd9d98b69acec3e85878995ada9533a9370
-- name: github.com/jessevdk/go-flags
-  version: 460c7bb0abd6e927f2767cadc91aa6ef776a98b4
-- name: github.com/juju/errors
-  version: c7d06af17c68cd34c835053720b21f6549d9b0ee
 - name: github.com/blastrain/vitess-sqlparser
   version: a139afbb1abad0805ea6a4e2c0fd4e513a3e0939
   subpackages:
@@ -33,6 +23,21 @@ imports:
   - tidbparser/dependency/util/memory
   - tidbparser/parser
   - tidbparser/parser/opcode
+- name: github.com/deckarep/golang-set
+  version: 699df6a3acf6867538e50931511e9dc403da108a
+- name: github.com/fatih/color
+  version: 533cd7fd8a85905f67a1753afb4deddc85ea174f
+- name: github.com/go-sql-driver/mysql
+  version: 17ef3dd9d98b69acec3e85878995ada9533a9370
+- name: github.com/jessevdk/go-flags
+  version: 460c7bb0abd6e927f2767cadc91aa6ef776a98b4
+- name: github.com/juju/errors
+  version: c7d06af17c68cd34c835053720b21f6549d9b0ee
+- name: github.com/lib/pq
+  version: 4604d39ddc9f62e2ca152114c73aec99b77a3468
+  subpackages:
+  - oid
+  - scram
 - name: github.com/mattn/go-colorable
   version: 9cbef7c35391cca05f15f8181dc0b18bc9736dbb
   repo: https://github.com/mattn/go-colorable
