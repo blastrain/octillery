@@ -54,7 +54,7 @@ type NullBool struct {
 
 // DBStats the compatible structure of DBStats in 'database/sql' package.
 type DBStats struct {
-	core core.DBStats
+	core.DBStats
 }
 
 // Stmt the compatible structure of Stmt in 'database/sql' package.
