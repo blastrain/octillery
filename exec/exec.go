@@ -5,8 +5,8 @@ import (
 	"database/sql"
 
 	"github.com/pkg/errors"
-	"go.knocknote.io/octillery/connection"
-	"go.knocknote.io/octillery/sqlparser"
+	"github.com/aokabi/octillery/connection"
+	"github.com/aokabi/octillery/sqlparser"
 )
 
 type mergedResult struct {

@@ -10,8 +10,8 @@ import (
 
 	vtparser "github.com/blastrain/vitess-sqlparser/sqlparser"
 	"github.com/pkg/errors"
-	"go.knocknote.io/octillery/connection"
-	"go.knocknote.io/octillery/sqlparser"
+	"github.com/aokabi/octillery/connection"
+	"github.com/aokabi/octillery/sqlparser"
 )
 
 // DBMigratorPlugin interface for migration

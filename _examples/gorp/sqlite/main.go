@@ -5,9 +5,9 @@ import (
 	"path/filepath"
 	"time"
 
-	"go.knocknote.io/octillery"
-	"go.knocknote.io/octillery/database/sql"
-	"go.knocknote.io/octillery/path"
+	"github.com/aokabi/octillery"
+	"github.com/aokabi/octillery/database/sql"
+	"github.com/aokabi/octillery/path"
 	"gopkg.in/gorp.v1"
 )
 

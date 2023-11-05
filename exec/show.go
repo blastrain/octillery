@@ -4,7 +4,7 @@ import (
 	"database/sql"
 
 	"github.com/pkg/errors"
-	"go.knocknote.io/octillery/sqlparser"
+	"github.com/aokabi/octillery/sqlparser"
 )
 
 // ShowQueryExecutor inherits QueryExecutorBase structure

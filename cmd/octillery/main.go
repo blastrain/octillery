@@ -19,22 +19,22 @@ import (
 	vtparser "github.com/blastrain/vitess-sqlparser/sqlparser"
 	flags "github.com/jessevdk/go-flags"
 	"github.com/pkg/errors"
-	"go.knocknote.io/octillery"
-	"go.knocknote.io/octillery/algorithm"
-	"go.knocknote.io/octillery/config"
-	"go.knocknote.io/octillery/connection"
-	_ "go.knocknote.io/octillery/connection/adapter/plugin"
-	"go.knocknote.io/octillery/database/sql"
-	"go.knocknote.io/octillery/migrator"
-	"go.knocknote.io/octillery/printer"
-	"go.knocknote.io/octillery/sqlparser"
-	"go.knocknote.io/octillery/transposer"
+	"github.com/aokabi/octillery"
+	"github.com/aokabi/octillery/algorithm"
+	"github.com/aokabi/octillery/config"
+	"github.com/aokabi/octillery/connection"
+	_ "github.com/aokabi/octillery/connection/adapter/plugin"
+	"github.com/aokabi/octillery/database/sql"
+	"github.com/aokabi/octillery/migrator"
+	"github.com/aokabi/octillery/printer"
+	"github.com/aokabi/octillery/sqlparser"
+	"github.com/aokabi/octillery/transposer"
 )
 
 // Option type for command line options
 type Option struct {
 	Version   VersionCommand   `description:"print the version of octillery" command:"version"`
-	Transpose TransposeCommand `description:"replace 'database/sql' to 'go.knocknote.io/octillery/database/sql'" command:"transpose"`
+	Transpose TransposeCommand `description:"replace 'database/sql' to 'github.com/aokabi/octillery/database/sql'" command:"transpose"`
 	Migrate   MigrateCommand   `description:"migrate database schema ( powered by schemalex )" command:"migrate"`
 	Import    ImportCommand    `description:"import seeds" command:"import"`
 	Console   ConsoleCommand   `description:"database console" command:"console"`
@@ -102,7 +102,7 @@ func (cmd *TransposeCommand) Execute(args []string) error {
 		searchPath = args[0]
 	}
 	pattern := regexp.MustCompile("^database/sql")
-	packagePrefix := "go.knocknote.io/octillery"
+	packagePrefix := "github.com/aokabi/octillery"
 	transposeClosure := func(packageName string) string {
 		return fmt.Sprintf("%s/%s", packagePrefix, packageName)
 	}
@@ -527,7 +527,7 @@ func (cmd *InstallCommand) lookupOctillery() ([]string, error) {
 	if err != nil {
 		return installPaths, errors.WithStack(err)
 	}
-	// First, lookup vendor/go.knocknote.io/octillery
+	// First, lookup vendor/github.com/aokabi/octillery
 	vendorPath := filepath.Join(cwd, "vendor", libraryPath)
 	if _, err := os.Stat(vendorPath); !os.IsNotExist(err) {
 		installPaths = append(installPaths, vendorPath)
@@ -536,13 +536,13 @@ func (cmd *InstallCommand) lookupOctillery() ([]string, error) {
 	if goPath == "" {
 		goPath = filepath.Join(os.Getenv("HOME"), "go")
 	}
-	// Second, lookup $GOPATH/src/go.knocknote.io/octillery
+	// Second, lookup $GOPATH/src/github.com/aokabi/octillery
 	underGoPath := filepath.Join(goPath, "src", libraryPath)
 	if _, err := os.Stat(underGoPath); !os.IsNotExist(err) {
 		installPaths = append(installPaths, underGoPath)
 	}
 	if os.Getenv("GO111MODULE") == "on" {
-		// lookup $GOPATH/pkg/mod/go.knocknote.io/octillery@*
+		// lookup $GOPATH/pkg/mod/github.com/aokabi/octillery@*
 		modPathPrefix := filepath.Join(goPath, "pkg", "mod", libraryPath)
 		modPaths, err := filepath.Glob(modPathPrefix + "@*")
 		if err == nil {
@@ -550,7 +550,7 @@ func (cmd *InstallCommand) lookupOctillery() ([]string, error) {
 		}
 	}
 	if len(installPaths) == 0 {
-		return installPaths, errors.New("cannot find 'go.knocknote.io/octillery' library")
+		return installPaths, errors.New("cannot find 'github.com/aokabi/octillery' library")
 	}
 	return installPaths, nil
 }

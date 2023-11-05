@@ -10,9 +10,9 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
-	"go.knocknote.io/octillery/algorithm"
-	"go.knocknote.io/octillery/config"
-	adap "go.knocknote.io/octillery/connection/adapter"
+	"github.com/aokabi/octillery/algorithm"
+	"github.com/aokabi/octillery/config"
+	adap "github.com/aokabi/octillery/connection/adapter"
 )
 
 var (

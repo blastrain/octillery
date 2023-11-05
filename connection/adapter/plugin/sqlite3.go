@@ -6,12 +6,12 @@ import (
 
 	sqlite3 "github.com/mattn/go-sqlite3"
 	"github.com/pkg/errors"
-	"go.knocknote.io/octillery/config"
-	"go.knocknote.io/octillery/connection/adapter"
-	osql "go.knocknote.io/octillery/database/sql"
-	osqldriver "go.knocknote.io/octillery/database/sql/driver"
-	"go.knocknote.io/octillery/debug"
-	"go.knocknote.io/octillery/internal"
+	"github.com/aokabi/octillery/config"
+	"github.com/aokabi/octillery/connection/adapter"
+	osql "github.com/aokabi/octillery/database/sql"
+	osqldriver "github.com/aokabi/octillery/database/sql/driver"
+	"github.com/aokabi/octillery/debug"
+	"github.com/aokabi/octillery/internal"
 )
 
 // SQLiteAdapter implements DBAdapter interface.

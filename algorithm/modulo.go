@@ -3,7 +3,7 @@ package algorithm
 import (
 	"database/sql"
 
-	"go.knocknote.io/octillery/debug"
+	"github.com/aokabi/octillery/debug"
 )
 
 type moduloShardingAlgorithm struct {

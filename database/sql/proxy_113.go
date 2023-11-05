@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
-	"go.knocknote.io/octillery/database/sql/driver"
+	"github.com/aokabi/octillery/database/sql/driver"
 )
 
 // NullTime the compatible structure of NullTime in 'database/sql' package.

@@ -17,7 +17,7 @@ var (
 // octillery currently supports modulo and hashmap.
 // If use the other new algorithm, implement the following interface as plugin ( new_algorithm.go )
 // and call algorithm.Register("algorithm_name", &NewAlgorithmStructure{}).
-// Also, new_algorithm.go file should put inside go.knocknote.io/octillery/algorithm directory.
+// Also, new_algorithm.go file should put inside github.com/aokabi/octillery/algorithm directory.
 type ShardingAlgorithm interface {
 	// initialize structure by connection list. if returns true, no more call this.
 	Init(conns []*sql.DB) bool

@@ -7,8 +7,8 @@ import (
 	"testing"
 	"time"
 
-	"go.knocknote.io/octillery/config"
-	"go.knocknote.io/octillery/path"
+	"github.com/aokabi/octillery/config"
+	"github.com/aokabi/octillery/path"
 )
 
 func checkErr(t *testing.T, err error) {

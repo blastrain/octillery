@@ -6,7 +6,7 @@ import (
 	"hash/crc32"
 
 	"github.com/pkg/errors"
-	"go.knocknote.io/octillery/debug"
+	"github.com/aokabi/octillery/debug"
 )
 
 const (

@@ -5,9 +5,9 @@ import (
 
 	vtparser "github.com/blastrain/vitess-sqlparser/sqlparser"
 	"github.com/pkg/errors"
-	"go.knocknote.io/octillery/debug"
-	"go.knocknote.io/octillery/exec"
-	"go.knocknote.io/octillery/sqlparser"
+	"github.com/aokabi/octillery/debug"
+	"github.com/aokabi/octillery/exec"
+	"github.com/aokabi/octillery/sqlparser"
 )
 
 // GetParsedQueryByQueryLog get instance of `sqlparser.Query` by QueryLog.

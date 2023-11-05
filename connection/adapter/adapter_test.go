@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"github.com/pkg/errors"
-	"go.knocknote.io/octillery/config"
+	"github.com/aokabi/octillery/config"
 )
 
 type TestAdapter struct {

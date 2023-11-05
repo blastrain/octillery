@@ -1,7 +1,7 @@
 version: 2
 jobs:
   test:
-    working_directory: /go/src/go.knocknote.io/octillery
+    working_directory: /go/src/github.com/aokabi/octillery
     docker:
     - image: golang:1.13
       environment:

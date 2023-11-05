@@ -9,13 +9,13 @@ import (
 	"strconv"
 
 	"github.com/pkg/errors"
-	"go.knocknote.io/octillery/config"
-	"go.knocknote.io/octillery/connection"
-	osql "go.knocknote.io/octillery/database/sql"
-	"go.knocknote.io/octillery/debug"
-	"go.knocknote.io/octillery/exec"
-	_ "go.knocknote.io/octillery/plugin" // load database adapter plugin
-	"go.knocknote.io/octillery/sqlparser"
+	"github.com/aokabi/octillery/config"
+	"github.com/aokabi/octillery/connection"
+	osql "github.com/aokabi/octillery/database/sql"
+	"github.com/aokabi/octillery/debug"
+	"github.com/aokabi/octillery/exec"
+	_ "github.com/aokabi/octillery/plugin" // load database adapter plugin
+	"github.com/aokabi/octillery/sqlparser"
 )
 
 // Version is the variable for versioning Octillery
@@ -27,7 +27,7 @@ const Version = "v1.1.1"
 //
 // Loaded configuration instance is set to internal global variable, therefore you can use only single configuration file at each application.
 //
-// Configuration format see go.knocknote.io/octillery/config
+// Configuration format see github.com/aokabi/octillery/config
 func LoadConfig(configPath string) error {
 	isDebug, _ := strconv.ParseBool(os.Getenv("OCTILLERY_DEBUG"))
 	debug.SetDebug(isDebug)

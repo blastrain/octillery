@@ -8,8 +8,8 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
-	"go.knocknote.io/octillery/connection"
-	"go.knocknote.io/octillery/database/sql/driver"
+	"github.com/aokabi/octillery/connection"
+	"github.com/aokabi/octillery/database/sql/driver"
 )
 
 // NamedArg the compatible structure of NamedArg in 'database/sql' package.

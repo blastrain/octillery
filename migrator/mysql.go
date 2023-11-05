@@ -11,7 +11,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/schemalex/schemalex"
 	"github.com/schemalex/schemalex/diff"
-	"go.knocknote.io/octillery/sqlparser"
+	"github.com/aokabi/octillery/sqlparser"
 )
 
 type schemaTextSource string

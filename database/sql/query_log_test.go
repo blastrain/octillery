@@ -3,7 +3,7 @@ package sql
 import (
 	"testing"
 
-	"go.knocknote.io/octillery/sqlparser"
+	"github.com/aokabi/octillery/sqlparser"
 )
 
 func TestGetParsedQueryByQueryLog(t *testing.T) {

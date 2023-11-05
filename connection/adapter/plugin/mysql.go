@@ -7,12 +7,12 @@ import (
 
 	mysql "github.com/go-sql-driver/mysql"
 	"github.com/pkg/errors"
-	"go.knocknote.io/octillery/config"
-	"go.knocknote.io/octillery/connection/adapter"
-	osql "go.knocknote.io/octillery/database/sql"
-	osqldriver "go.knocknote.io/octillery/database/sql/driver"
-	"go.knocknote.io/octillery/debug"
-	"go.knocknote.io/octillery/internal"
+	"github.com/aokabi/octillery/config"
+	"github.com/aokabi/octillery/connection/adapter"
+	osql "github.com/aokabi/octillery/database/sql"
+	osqldriver "github.com/aokabi/octillery/database/sql/driver"
+	"github.com/aokabi/octillery/debug"
+	"github.com/aokabi/octillery/internal"
 )
 
 // MySQLAdapter implements DBAdapter interface.
@@ -27,7 +27,7 @@ func init() {
 	var driver interface{}
 	driver = mysql.MySQLDriver{}
 	if drv, ok := driver.(osqldriver.Driver); ok {
-		// mysql package's import statement is already replaced to "go.knocknote.io/octillery/database/sql"
+		// mysql package's import statement is already replaced to "github.com/aokabi/octillery/database/sql"
 		osql.RegisterByOctillery(pluginName, drv)
 	} else {
 		// In this case, mysql package already call `sql.Register("mysql", &MySQLDriver{})`.

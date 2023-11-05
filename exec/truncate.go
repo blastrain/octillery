@@ -4,8 +4,8 @@ import (
 	"database/sql"
 
 	"github.com/pkg/errors"
-	"go.knocknote.io/octillery/debug"
-	"go.knocknote.io/octillery/sqlparser"
+	"github.com/aokabi/octillery/debug"
+	"github.com/aokabi/octillery/sqlparser"
 )
 
 // TruncateQueryExecutor inherits QueryExecutorBase structure
