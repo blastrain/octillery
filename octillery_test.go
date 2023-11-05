@@ -10,8 +10,8 @@ import (
 
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/pkg/errors"
-	osql "go.knocknote.io/octillery/database/sql"
-	"go.knocknote.io/octillery/path"
+	osql "github.com/aokabi/octillery/database/sql"
+	"github.com/aokabi/octillery/path"
 )
 
 func init() {

@@ -7,10 +7,10 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
-	"go.knocknote.io/octillery/connection"
-	"go.knocknote.io/octillery/debug"
-	"go.knocknote.io/octillery/exec"
-	"go.knocknote.io/octillery/sqlparser"
+	"github.com/aokabi/octillery/connection"
+	"github.com/aokabi/octillery/debug"
+	"github.com/aokabi/octillery/exec"
+	"github.com/aokabi/octillery/sqlparser"
 )
 
 // DB the compatible structure of DB in 'database/sql' package.

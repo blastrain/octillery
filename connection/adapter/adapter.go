@@ -5,15 +5,15 @@ import (
 	"sync"
 
 	"github.com/pkg/errors"
-	"go.knocknote.io/octillery/config"
-	"go.knocknote.io/octillery/debug"
+	"github.com/aokabi/octillery/config"
+	"github.com/aokabi/octillery/debug"
 )
 
 // DBAdapter is a adapter for common sequence each database driver.
 //
 // octillery currently supports mysql and sqlite3.
 // If use the other new adapter, implement the following interface as plugin ( new_adapter.go ) and call adapter.Register("adapter_name", &NewAdapterStructure{}).
-// Also, new_adapter.go file should put inside go.knocknote.io/octillery/plugin directory.
+// Also, new_adapter.go file should put inside github.com/aokabi/octillery/plugin directory.
 type DBAdapter interface {
 	// get current unique id for all shards by sequencer
 	CurrentSequenceID(conn *sql.DB, tableName string) (int64, error)

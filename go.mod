@@ -13,8 +13,6 @@ require (
 	github.com/mattn/go-sqlite3 v0.0.0-20170407154627-cf7286f069c3
 	github.com/pkg/errors v0.8.1-0.20170910134614-2b3a18b5f0fb
 	github.com/schemalex/schemalex v0.1.1
-	github.com/sergi/go-diff v0.0.0-20170409071739-feef008d51ad
-	golang.org/x/net v0.0.0-20170421002609-c8c74377599b // indirect
-	golang.org/x/sys v0.0.0-20170421005244-ea9bcade75cb // indirect
-	gopkg.in/yaml.v2 v2.2.8
+	github.com/sergi/go-diff v1.3.1
+	gopkg.in/yaml.v2 v2.4.0
 )

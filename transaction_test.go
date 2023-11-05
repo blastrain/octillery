@@ -8,8 +8,8 @@ import (
 	"testing"
 
 	"github.com/pkg/errors"
-	"go.knocknote.io/octillery/database/sql"
-	"go.knocknote.io/octillery/path"
+	"github.com/aokabi/octillery/database/sql"
+	"github.com/aokabi/octillery/path"
 )
 
 func init() {

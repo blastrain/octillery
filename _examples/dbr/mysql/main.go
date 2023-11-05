@@ -5,8 +5,8 @@ import (
 	"path/filepath"
 
 	"github.com/gocraft/dbr"
-	"go.knocknote.io/octillery"
-	"go.knocknote.io/octillery/path"
+	"github.com/aokabi/octillery"
+	"github.com/aokabi/octillery/path"
 )
 
 type Member struct {

@@ -8,9 +8,9 @@ import (
 	"testing"
 	"time"
 
-	"go.knocknote.io/octillery/config"
-	"go.knocknote.io/octillery/connection/adapter"
-	"go.knocknote.io/octillery/path"
+	"github.com/aokabi/octillery/config"
+	"github.com/aokabi/octillery/connection/adapter"
+	"github.com/aokabi/octillery/path"
 )
 
 type TestAdapter struct {

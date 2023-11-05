@@ -12,11 +12,11 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
-	"go.knocknote.io/octillery/config"
-	"go.knocknote.io/octillery/connection"
-	"go.knocknote.io/octillery/connection/adapter"
-	"go.knocknote.io/octillery/database/sql/driver"
-	"go.knocknote.io/octillery/path"
+	"github.com/aokabi/octillery/config"
+	"github.com/aokabi/octillery/connection"
+	"github.com/aokabi/octillery/connection/adapter"
+	"github.com/aokabi/octillery/database/sql/driver"
+	"github.com/aokabi/octillery/path"
 )
 
 type TestAdapter struct {

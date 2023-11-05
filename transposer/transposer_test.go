@@ -55,7 +55,7 @@ import (
 		}
 		if err := instance.TransposeDryRun(regexp.MustCompile("^database/sql"), ".", nil, func(packageName string) string {
 			fmt.Println(packageName)
-			return filepath.Join("go.knocknote.io/octillery", packageName)
+			return filepath.Join("github.com/aokabi/octillery", packageName)
 		}); err != nil {
 			t.Fatalf("%+v\n", err)
 		}

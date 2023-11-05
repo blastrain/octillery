@@ -1,4 +1,4 @@
-# Octillery [![GoDoc](https://godoc.org/go.knocknote.io/octillery?status.svg)](https://godoc.org/go.knocknote.io/octillery) [![CircleCI](https://circleci.com/gh/blastrain/octillery.svg?style=shield)](https://circleci.com/gh/blastrain/octillery)  [![codecov](https://codecov.io/gh/blastrain/octillery/branch/master/graph/badge.svg?token=hRKqugQMsg)](https://codecov.io/gh/blastrain/octillery) [![Go Report Card](https://goreportcard.com/badge/go.knocknote.io/octillery)](https://goreportcard.com/report/go.knocknote.io/octillery)
+# Octillery [![GoDoc](https://godoc.org/github.com/aokabi/octillery?status.svg)](https://godoc.org/github.com/aokabi/octillery) [![CircleCI](https://circleci.com/gh/blastrain/octillery.svg?style=shield)](https://circleci.com/gh/blastrain/octillery)  [![codecov](https://codecov.io/gh/blastrain/octillery/branch/master/graph/badge.svg?token=hRKqugQMsg)](https://codecov.io/gh/blastrain/octillery) [![Go Report Card](https://goreportcard.com/badge/github.com/aokabi/octillery)](https://goreportcard.com/report/github.com/aokabi/octillery)
 
 
 <img width="300px" height="238px" src="https://user-images.githubusercontent.com/209884/29391665-d1d6e1d0-8333-11e7-9a33-1db3dc9d2f72.png"></img>
@@ -29,13 +29,13 @@ We need database sharding library in Go. Of course, we know some libraries like 
 ## Install as a CLI tool
 
 ```shell
-go get go.knocknote.io/octillery/cmd/octillery
+go get github.com/aokabi/octillery/cmd/octillery
 ```
 
 ## Install as a library
 
 ```shell
-go get go.knocknote.io/octillery
+go get github.com/aokabi/octillery
 ```
 
 # How It Works
@@ -184,9 +184,9 @@ From this we define requirements of database sharding library.
 ### How To Capture Query
 
 `Octillery` CLI tool supports `transpose` command.
-It replace import statement of `database/sql` to `go.knocknote.io/octillery/database/sql`.
+It replace import statement of `database/sql` to `github.com/aokabi/octillery/database/sql`.
 
-`go.knocknote.io/octillery/database/sql` package has compatible interface of `database/sql`.
+`github.com/aokabi/octillery/database/sql` package has compatible interface of `database/sql`.
 
 Therefore, OR Mapping library call `Octillery`'s interface. and it can capture all queries.
 
@@ -199,29 +199,29 @@ Therefore, OR Mapping library call `Octillery`'s interface. and it can capture a
 `Octillery` supports `mysql` and `sqlite3` adapter by default.  
 If you want to use new database adapter, need to the following two steps.
 
-1. Write `DBAdapter` interface. ( see https://godoc.org/go.knocknote.io/octillery/connection/adapter )
-2. Put new adapter file to `go.knocknote.io/octillery/plugin` directory
+1. Write `DBAdapter` interface. ( see https://godoc.org/github.com/aokabi/octillery/connection/adapter )
+2. Put new adapter file to `github.com/aokabi/octillery/plugin` directory
 
 ### How To Use New Database Sharding Algorithm
 
 `Octillery` supports `modulo` and `hashmap` algorithm by default.  
 If you want to use new algorithm, need to the following two steps.
 
-1. Write `ShardingAlgorithm` interface. ( see https://godoc.org/go.knocknote.io/octillery/algorithm )
-2. Put new algorithm file to `go.knocknote.io/octillery/algorithm` directory
+1. Write `ShardingAlgorithm` interface. ( see https://godoc.org/github.com/aokabi/octillery/algorithm )
+2. Put new algorithm file to `github.com/aokabi/octillery/algorithm` directory
 
 # Usage
 
 ## 1. Install CLI tool
 
 ```shell
-$ go get go.knocknote.io/octillery/cmd/octillery
+$ go get github.com/aokabi/octillery/cmd/octillery
 ```
 
 ## 2. Install library
 
 ```shell
-$ go get go.knocknote.io/octillery
+$ go get github.com/aokabi/octillery
 ```
 
 
@@ -277,8 +277,8 @@ $ octillery migrate --config databases.yml /path/to/schema
 package main
 
 import (
-	"go.knocknote.io/octillery"
-	"go.knocknote.io/octillery/database/sql"
+	"github.com/aokabi/octillery"
+	"github.com/aokabi/octillery/database/sql"
 )
 
 func main() {
@@ -292,7 +292,7 @@ func main() {
 
 # Document
 
-See [GoDoc](https://godoc.org/go.knocknote.io/octillery)
+See [GoDoc](https://godoc.org/github.com/aokabi/octillery)
 
 # Development
 

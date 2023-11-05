@@ -4,7 +4,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"go.knocknote.io/octillery/path"
+	"github.com/aokabi/octillery/path"
 )
 
 func TestError(t *testing.T) {

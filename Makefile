@@ -1,7 +1,7 @@
 .PHONY: install_command
 
 install_command:
-	go install go.knocknote.io/octillery/cmd/octillery
+	go install github.com/aokabi/octillery/cmd/octillery
 
 .PHONY: test
 test:
