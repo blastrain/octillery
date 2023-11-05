@@ -521,7 +521,7 @@ func (cmd *ConsoleCommand) Execute(args []string) error {
 }
 
 func (cmd *InstallCommand) lookupOctillery() ([]string, error) {
-	libraryPath := filepath.Join("go.knocknote.io", "octillery")
+	libraryPath := filepath.Join("github.com/aokabi", "octillery")
 	installPaths := []string{}
 	cwd, err := os.Getwd()
 	if err != nil {
